@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "BidReel",
+    "slug": "bidreel",
+    "version": "1.0.0",
+    "scheme": "bidreel",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.amerifilms.bidreel",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.amerifilms.bidreel",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "53b82e73-42a1-4e05-b681-17222f55f10e"
+      }
+    }
+  }
+}
