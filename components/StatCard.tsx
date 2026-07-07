@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Radius, Spacing } from "@/constants/Colors";
 
@@ -15,12 +15,22 @@ interface Props {
   footnote?: string;
   /** Bottom visual — a Sparkline, meter, or bars. */
   children?: React.ReactNode;
+  onPress?: () => void;
 }
+
+// On web, animate transform/border smoothly; on native these keys are ignored.
+const webTransition =
+  Platform.OS === "web"
+    ? ({
+        transitionDuration: "160ms",
+        transitionProperty: "transform, border-color",
+      } as any)
+    : null;
 
 /**
  * Enhanced KPI card: icon + label, optional trend delta, big value, an optional
- * footnote, and a bottom visual slot. Replaces the old flat MetricCard on the
- * dashboard.
+ * footnote, and a bottom visual slot. Lifts on hover (web) and presses in on
+ * tap (web + native).
  */
 export function StatCard({
   label,
@@ -31,9 +41,18 @@ export function StatCard({
   deltaPositive = true,
   footnote,
   children,
+  onPress,
 }: Props) {
   return (
-    <View style={styles.card}>
+    <Pressable
+      onPress={onPress}
+      style={({ hovered, pressed }: any) => [
+        styles.card,
+        webTransition,
+        hovered && styles.cardHover,
+        pressed && styles.cardPressed,
+      ]}
+    >
       <View style={styles.head}>
         <View style={styles.labelWrap}>
           <View style={[styles.iconWrap, { backgroundColor: tint + "22" }]}>
@@ -58,7 +77,7 @@ export function StatCard({
       </Text>
       {footnote ? <Text style={styles.foot}>{footnote}</Text> : null}
       {children ? <View style={{ marginTop: 10 }}>{children}</View> : null}
-    </View>
+    </Pressable>
   );
 }
 
@@ -72,6 +91,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     padding: Spacing.md,
   },
+  cardHover: {
+    transform: [{ translateY: -3 }],
+    borderColor: Colors.accent + "66",
+  },
+  cardPressed: { transform: [{ scale: 0.985 }] },
   head: {
     flexDirection: "row",
     alignItems: "center",

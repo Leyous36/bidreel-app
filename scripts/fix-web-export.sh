@@ -42,6 +42,15 @@ cat > "$DIST/vercel.json" <<'JSON'
 }
 JSON
 
+# Restore the Vercel project link so `vercel --prod` doesn't re-prompt every
+# time (a fresh export wipes dist/.vercel). Save it once after your first link:
+#   cp -r dist/.vercel .vercel
+if [ -d "$ROOT/.vercel" ]; then
+  echo "→ Restoring saved Vercel project link"
+  rm -rf "$DIST/.vercel"
+  cp -r "$ROOT/.vercel" "$DIST/.vercel"
+fi
+
 cd "$DIST"
 if [ -d assets/node_modules ]; then
   echo "→ Renaming assets/node_modules -> assets/vendorfonts"

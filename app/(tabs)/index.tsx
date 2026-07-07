@@ -6,6 +6,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  Platform,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +15,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Bid } from "@/lib/types";
 import { StatCard } from "@/components/StatCard";
 import { Sparkline } from "@/components/Sparkline";
+import { FadeInView } from "@/components/FadeInView";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Screen } from "@/components/ui";
 import { Colors, Radius, Spacing } from "@/constants/Colors";
@@ -21,6 +23,15 @@ import { Colors, Radius, Spacing } from "@/constants/Colors";
 type Range = "month" | "all";
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
+
+// On web, animate transform/background smoothly on hover; ignored on native.
+const webTransition =
+  Platform.OS === "web"
+    ? ({
+        transitionDuration: "150ms",
+        transitionProperty: "transform, background-color, border-color",
+      } as any)
+    : null;
 
 function amountOf(b: Bid): number {
   return b.proposal?.investment?.total ?? b.budget ?? 0;
@@ -184,7 +195,7 @@ export default function DashboardScreen() {
           />
         }
         ListHeaderComponent={
-          <View style={styles.header}>
+          <FadeInView style={styles.header}>
             <View style={styles.topRow}>
               <Text style={styles.date}>{today}</Text>
               <View style={styles.seg}>
@@ -301,12 +312,18 @@ export default function DashboardScreen() {
                 {nudges.map((n) => (
                   <Pressable
                     key={n.key}
-                    style={[
+                    style={({ hovered, pressed }: any) => [
                       styles.nudgeRow,
+                      webTransition,
                       {
                         backgroundColor: n.color + "14",
                         borderColor: n.color + "40",
                       },
+                      hovered && {
+                        transform: [{ translateX: 4 }],
+                        backgroundColor: n.color + "22",
+                      },
+                      pressed && { transform: [{ scale: 0.99 }] },
                     ]}
                     onPress={() => router.push(`/bid/${n.items[0].id}`)}
                   >
@@ -335,7 +352,7 @@ export default function DashboardScreen() {
                 <Text style={styles.viewAll}>View all</Text>
               </Pressable>
             </View>
-          </View>
+          </FadeInView>
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -345,11 +362,17 @@ export default function DashboardScreen() {
             </Text>
           </View>
         }
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           const tint = Colors.status[item.status] ?? Colors.textMuted;
           return (
+            <FadeInView delay={Math.min(index, 6) * 55}>
             <Pressable
-              style={({ pressed }) => [styles.bidRow, pressed && { opacity: 0.8 }]}
+              style={({ hovered, pressed }: any) => [
+                styles.bidRow,
+                webTransition,
+                hovered && styles.bidRowHover,
+                pressed && { opacity: 0.85, transform: [{ scale: 0.995 }] },
+              ]}
               onPress={() => router.push(`/bid/${item.id}`)}
             >
               <View style={[styles.avatar, { backgroundColor: tint + "22" }]}>
@@ -370,6 +393,7 @@ export default function DashboardScreen() {
                 <StatusBadge status={item.status} />
               </View>
             </Pressable>
+            </FadeInView>
           );
         }}
       />
@@ -479,6 +503,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderRadius: Radius.md,
     padding: Spacing.md,
+  },
+  bidRowHover: {
+    transform: [{ translateX: 4 }],
+    backgroundColor: Colors.surfaceRaised,
+    borderColor: Colors.border,
   },
   avatar: {
     width: 38,

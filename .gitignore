@@ -4,6 +4,7 @@ dist/
 web-build/
 *.log
 .env
+.vercel
 .DS_Store
 ios/
 android/
