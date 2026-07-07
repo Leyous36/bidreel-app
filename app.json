@@ -22,6 +22,10 @@
         "android.permission.RECORD_AUDIO"
       ]
     },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
     "plugins": [
       "expo-router",
       "expo-secure-store",

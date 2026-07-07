@@ -9,14 +9,17 @@ import { Platform } from "react-native";
 import { supabase } from "./supabase";
 
 // Show a banner + play a sound when a notification arrives in the foreground.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+// Native-only: expo-notifications is unsupported on web.
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 let lastRegisteredFor: string | null = null;
 
@@ -25,6 +28,8 @@ export async function registerForPushNotificationsAsync(
 ): Promise<void> {
   // Avoid re-running for the same user within a session.
   if (lastRegisteredFor === userId) return;
+  // Push notifications aren't supported on web — skip cleanly.
+  if (Platform.OS === "web") return;
 
   try {
     // Push tokens only work on physical devices.
