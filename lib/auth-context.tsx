@@ -9,6 +9,10 @@ import { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { Profile } from "./types";
 import { initPurchases, getEntitlementTier } from "./revenue-cat";
+import {
+  registerForPushNotificationsAsync,
+  clearPushRegistration,
+} from "./notifications";
 
 interface AuthState {
   session: Session | null;
@@ -52,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       if (session) {
         initPurchases(session.user.id);
+        registerForPushNotificationsAsync(session.user.id);
         loadProfile(session.user.id).finally(() => setLoading(false));
       } else {
         setLoading(false);
@@ -63,8 +68,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
+        registerForPushNotificationsAsync(session.user.id);
         loadProfile(session.user.id);
       } else {
+        clearPushRegistration();
         setProfile(null);
       }
     });

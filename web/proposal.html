@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Proposal · BidReel</title>
+<meta property="og:title" content="Your video production proposal" />
+<meta property="og:description" content="A client-ready proposal, prepared with BidReel." />
+<meta property="og:type" content="website" />
+<style>
+  :root{
+    --bg:#0B0E13; --surface:#141923; --raised:#1C2230; --border:#262E3F;
+    --text:#F4F6FA; --t2:#94A0B8; --tmute:#5B6678; --accent:#F5B82E; --green:#3DBE7B;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:24px 18px 150px}
+  .center{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;color:var(--t2)}
+  .spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent);animation:spin 0.8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  header.studio{display:flex;align-items:center;gap:14px;padding:6px 0 22px;border-bottom:1px solid var(--border);margin-bottom:26px}
+  header.studio img{height:46px;width:46px;border-radius:11px;object-fit:cover;background:var(--raised)}
+  .brandname{font-size:15px;font-weight:700;letter-spacing:.2px}
+  .brandsub{font-size:12.5px;color:var(--tmute);margin-top:2px}
+  .preparedfor{font-size:12px;color:var(--tmute);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:6px}
+  h1{font-size:27px;line-height:1.2;margin:0 0 18px;font-weight:800}
+  .overview{color:var(--t2);font-size:16px;line-height:1.6;white-space:pre-wrap;margin-bottom:32px}
+  section{margin-bottom:30px}
+  .label{font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:14px}
+  ul.clean{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+  ul.clean li{position:relative;padding-left:24px;color:var(--text);font-size:15.5px;line-height:1.5}
+  ul.clean li::before{content:"";position:absolute;left:2px;top:9px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+  .phase{background:var(--raised);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px}
+  .phase .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .phase .name{font-weight:700;font-size:15px}
+  .phase .dur{color:var(--accent);font-size:13px;font-weight:600;white-space:nowrap}
+  .phase .det{color:var(--t2);font-size:14px;line-height:1.5;margin-top:5px}
+  .invest{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:8px 18px}
+  .row{display:flex;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);font-size:15.5px}
+  .row:last-child{border-bottom:none}
+  .row .amt{font-variant-numeric:tabular-nums;font-weight:600}
+  .total{display:flex;justify-content:space-between;align-items:center;padding:18px 0 8px}
+  .total .t{font-weight:800;font-size:18px}
+  .total .v{font-weight:800;font-size:26px;color:var(--accent);font-variant-numeric:tabular-nums}
+  .terms{color:var(--tmute);font-size:13.5px;margin-top:8px}
+  .footer{margin-top:48px;padding-top:22px;border-top:1px solid var(--border);text-align:center;color:var(--tmute);font-size:12.5px}
+  .footer a{color:var(--t2);text-decoration:none}
+  .badge{display:inline-flex;align-items:center;gap:7px;background:rgba(61,190,123,.13);border:1px solid var(--green);color:var(--green);
+    padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;margin-bottom:20px}
+  /* sticky action bar (accept / pay) */
+  .actionbar{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(180deg,rgba(11,14,19,0) 0%,var(--bg) 38%);
+    padding:22px 18px calc(20px + env(safe-area-inset-bottom));z-index:40}
+  .actionbar .inner{max-width:760px;margin:0 auto}
+  .bigbtn{width:100%;border:none;border-radius:14px;background:var(--accent);color:#1A1405;font-size:17px;font-weight:800;
+    padding:17px;cursor:pointer}
+  .bigbtn:active{opacity:.85}
+  .bigbtn:disabled{opacity:.6}
+  .barnote{text-align:center;color:var(--tmute);font-size:12px;margin-top:10px}
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:flex-end;justify-content:center;z-index:60}
+  .overlay.open{display:flex}
+  .modal{width:100%;max-width:520px;background:var(--surface);border:1px solid var(--border);
+    border-radius:20px 20px 0 0;padding:24px 22px calc(26px + env(safe-area-inset-bottom))}
+  @media(min-width:560px){.overlay{align-items:center}.modal{border-radius:20px}}
+  .modal h3{margin:0 0 6px;font-size:19px}
+  .modal p{margin:0 0 16px;color:var(--t2);font-size:14px;line-height:1.5}
+  .modal input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);
+    font-size:16px;padding:14px;outline:none}
+  .modal input:focus{border-color:var(--accent)}
+  .mrow{display:flex;gap:10px;margin-top:18px}
+  .ghost{flex:1;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer}
+  .confirm{flex:2;background:var(--accent);border:none;color:#1A1405;border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer}
+  .confirm:disabled{opacity:.5}
+  .err{color:#E5564F;font-size:13px;margin-top:10px;min-height:16px}
+  .status-box{border-radius:16px;padding:18px 20px;margin-top:4px}
+  .status-box.green{background:rgba(61,190,123,.10);border:1px solid var(--green)}
+  .status-box .t{font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px}
+  .status-box.green .t{color:var(--green)}
+  .status-box .s{color:var(--t2);font-size:14px;margin-top:6px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap" id="root">
+  <div class="center"><div class="spinner"></div><div>Loading proposal…</div></div>
+</div>
+
+<!-- Accept modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3>Accept this proposal</h3>
+    <p>Type your full name below. This acts as your signature and notifies the studio.</p>
+    <input id="acceptName" type="text" placeholder="Your full name" autocomplete="name" />
+    <div class="err" id="acceptErr"></div>
+    <div class="mrow">
+      <button class="ghost" id="acceptCancel">Cancel</button>
+      <button class="confirm" id="acceptConfirm">Accept proposal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- config: anon key is public by design (already shipped in the app) ---
+  var SUPABASE_URL = "https://ikrjbkrhawfpekocksjw.supabase.co";
+  var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlrcmpia3JoYXdmcGVrb2Nrc2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMTAwMjEsImV4cCI6MjA5Njg4NjAyMX0.oqgfWiA0EioXnQ6OKHNsXXMpocqlgtOEfUgdrUT-3_g";
+
+  function getToken(){
+    var p = location.pathname.replace(/\/+$/,"").split("/");
+    var last = p[p.length-1];
+    if(last && last !== "p" && last.indexOf("proposal") !== 0) return last;
+    var u = new URL(location.href);
+    return u.searchParams.get("t") || u.searchParams.get("token") || location.hash.replace(/^#/,"") || "";
+  }
+  var TOKEN = getToken();
+  var PAID = new URL(location.href).searchParams.get("paid") === "1";
+  var DATA = null;
+
+  function esc(s){var d=document.createElement("div");d.textContent=s==null?"":String(s);return d.innerHTML;}
+  function money(n){return "$"+Number(n||0).toLocaleString();}
+  function cents(c){return "$"+Math.round(Number(c||0)/100).toLocaleString();}
+
+  function render(d){
+    DATA = d;
+    var p = d.proposal, s = d.studio || {}, st = d.state || {};
+    // Apply the studio's brand color to the page accent.
+    if (s.color) { try { document.documentElement.style.setProperty("--accent", s.color); } catch (e) {} }
+    var logo = s.logo ? '<img src="'+esc(s.logo)+'" alt="" />'
+      : '<div style="height:46px;width:46px;border-radius:11px;background:var(--raised);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--accent)">'+esc((s.name||"S").slice(0,1))+'</div>';
+    var html = '';
+    html += '<header class="studio">'+logo+'<div><div class="brandname">'+esc(s.name||"Proposal")+'</div>'+
+            (s.producer?'<div class="brandsub">'+esc(s.producer)+'</div>':'')+'</div></header>';
+    if(st.accepted || PAID || st.deposit_status==='paid'){ html += '<div class="badge">✓ Accepted</div>'; }
+    html += '<div class="preparedfor">Prepared for '+esc(d.client_name||"")+'</div>';
+    html += '<h1>'+esc(p.subject||"Video Production Proposal")+'</h1>';
+    if(p.overview) html += '<div class="overview">'+esc(p.overview)+'</div>';
+
+    if(p.scope && p.scope.length){
+      html += '<section><div class="label">Scope of work</div><ul class="clean">'+
+        p.scope.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul></section>';
+    }
+    if(p.deliverables && p.deliverables.length){
+      html += '<section><div class="label">Deliverables</div><ul class="clean">'+
+        p.deliverables.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul></section>';
+    }
+    if(p.timeline && p.timeline.length){
+      html += '<section><div class="label">Timeline</div>'+
+        p.timeline.map(function(t){return '<div class="phase"><div class="top"><span class="name">'+esc(t.phase)+
+          '</span><span class="dur">'+esc(t.duration)+'</span></div>'+(t.details?'<div class="det">'+esc(t.details)+'</div>':'')+'</div>';}).join('')+
+        '</section>';
+    }
+    if(p.investment){
+      var inv = p.investment;
+      var rows = (inv.breakdown||[]).map(function(b){
+        return '<div class="row"><span>'+esc(b.item)+'</span><span class="amt">'+money(b.amount)+'</span></div>';}).join('');
+      html += '<section><div class="label">Investment</div><div class="invest">'+rows+
+        '<div class="total"><span class="t">Total</span><span class="v">'+money(inv.total)+'</span></div></div>'+
+        (inv.paymentTerms?'<div class="terms">'+esc(inv.paymentTerms)+'</div>':'')+'</section>';
+    }
+    if(p.whyUs){
+      html += '<section><div class="label">Why us</div><div class="overview" style="margin-bottom:0">'+esc(p.whyUs)+'</div></section>';
+    }
+    html += '<section id="stateSlot"></section>';
+    html += '<div class="footer">Prepared with <a href="https://bidreel.io">BidReel</a></div>';
+    document.getElementById('root').innerHTML = html;
+    document.title = (p.subject || "Proposal") + " · " + (s.name || "BidReel");
+    renderActions();
+  }
+
+  // Decide which sticky bar / inline state to show, based on DATA.state.
+  function renderActions(){
+    var st = (DATA && DATA.state) || {};
+    var slot = document.getElementById('stateSlot');
+    if(slot) slot.innerHTML = '';
+    setBar(null);
+
+    var paid = PAID || st.deposit_status === 'paid';
+    var hasDeposit = Number(st.deposit_amount_cents||0) >= 100;
+
+    if(paid){
+      if(slot) slot.innerHTML =
+        '<div class="status-box green"><div class="t">✓ Deposit paid — you\'re booked</div>'+
+        '<div class="s">Thank you. The studio has been notified and will reach out with next steps.</div></div>';
+      return;
+    }
+    if(!st.accepted){
+      setBar('<button class="bigbtn" id="acceptBtn">Accept proposal</button>'+
+             '<div class="barnote">No account needed · you\'ll get a copy by email</div>');
+      document.getElementById('acceptBtn').addEventListener('click', openModal);
+      return;
+    }
+    // accepted:
+    if(hasDeposit){
+      setBar('<button class="bigbtn" id="payBtn">Pay deposit '+cents(st.deposit_amount_cents)+' &rarr;</button>'+
+             '<div class="barnote">Secure card payment via Stripe</div>');
+      document.getElementById('payBtn').addEventListener('click', startCheckout);
+    } else if(slot){
+      slot.innerHTML =
+        '<div class="status-box green"><div class="t">✓ Accepted</div>'+
+        '<div class="s">'+(DATA.accepted_by_name?('Accepted by '+esc(DATA.accepted_by_name)+'. '):'')+
+        'The studio has been notified — they\'ll be in touch with next steps.</div></div>';
+    }
+  }
+
+  function setBar(innerHTML){
+    var ex = document.getElementById('actionbar');
+    if(ex) ex.remove();
+    if(!innerHTML) return;
+    var bar = document.createElement('div');
+    bar.id='actionbar'; bar.className='actionbar';
+    bar.innerHTML = '<div class="inner">'+innerHTML+'</div>';
+    document.body.appendChild(bar);
+  }
+
+  // ---- Accept ----
+  function openModal(){ document.getElementById('overlay').classList.add('open');
+    setTimeout(function(){ document.getElementById('acceptName').focus(); }, 60); }
+  function closeModal(){ document.getElementById('overlay').classList.remove('open'); }
+  function wireModal(){
+    document.getElementById('acceptCancel').addEventListener('click', closeModal);
+    document.getElementById('overlay').addEventListener('click', function(e){ if(e.target.id==='overlay') closeModal(); });
+    document.getElementById('acceptConfirm').addEventListener('click', submitAccept);
+  }
+  function submitAccept(){
+    var name = (document.getElementById('acceptName').value||'').trim();
+    var err = document.getElementById('acceptErr');
+    var btn = document.getElementById('acceptConfirm');
+    if(!name){ err.textContent = 'Please type your name to accept.'; return; }
+    err.textContent=''; btn.disabled=true; btn.textContent='Accepting…';
+    api("proposal-accept", { token:TOKEN, name:name })
+    .then(function(){
+      closeModal();
+      DATA.state.accepted = true; DATA.accepted_by_name = name;
+      render(DATA);                 // re-render → reveals Pay bar (or accepted box)
+      window.scrollTo({top:0, behavior:'smooth'});
+    })
+    .catch(function(e){ err.textContent = e.message || 'Something went wrong.';
+      btn.disabled=false; btn.textContent='Accept proposal'; });
+  }
+
+  // ---- Pay deposit ----
+  function startCheckout(){
+    var btn = document.getElementById('payBtn');
+    if(btn){ btn.disabled=true; btn.textContent='Opening secure checkout…'; }
+    api("deposit-checkout", { token:TOKEN })
+    .then(function(j){
+      if(j.alreadyPaid){ PAID = true; render(DATA); return; }
+      if(j.url){ window.location.href = j.url; return; }
+      throw new Error('Could not start checkout');
+    })
+    .catch(function(e){
+      if(btn){ btn.disabled=false; btn.innerHTML='Pay deposit '+cents((DATA.state||{}).deposit_amount_cents)+' &rarr;'; }
+      alert(e.message || 'Payment could not be started.');
+    });
+  }
+
+  // ---- helpers ----
+  function api(fn, body){
+    return fetch(SUPABASE_URL+"/functions/v1/"+fn, {
+      method:"POST",
+      headers:{ "apikey":ANON, "Authorization":"Bearer "+ANON, "Content-Type":"application/json" },
+      body: JSON.stringify(body)
+    }).then(function(r){ return r.json().then(function(j){ if(!r.ok || j.error){ throw new Error(j.error||'Request failed'); } return j; }); });
+  }
+
+  function fail(msg){
+    setBar(null);
+    document.getElementById('root').innerHTML =
+      '<div class="center"><div style="font-size:42px">📄</div><div style="color:var(--text);font-weight:700;font-size:18px">'+esc(msg)+'</div>'+
+      '<div>This link may have been turned off or is incorrect.</div></div>';
+  }
+
+  function boot(){
+    wireModal();
+    if(!TOKEN){ fail("Proposal not found"); return; }
+    fetch(SUPABASE_URL+"/functions/v1/proposal-public?token="+encodeURIComponent(TOKEN), {
+      headers: { "apikey": ANON, "Authorization": "Bearer "+ANON }
+    })
+    .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+    .then(function(res){ if(!res.ok || res.j.error) return fail("Proposal not found"); render(res.j); })
+    .catch(function(){ fail("Couldn't load this proposal"); });
+  }
+  boot();
+</script>
+</body>
+</html>

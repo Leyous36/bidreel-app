@@ -18,6 +18,7 @@ export const Colors = {
     draft: "#5B6678",
     sent: "#4D8DF7",
     viewed: "#8E6FF7",
+    accepted: "#36C5D6",
     pending: "#F5B82E",
     won: "#3DBE7B",
     lost: "#E5564F",

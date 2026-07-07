@@ -12,71 +12,123 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+// --- Defensive helpers -------------------------------------------------------
+// Stored proposals are AI-generated and can vary in shape (missing fields, or
+// alternate field names like lineItems/detail/depositTerms). These normalizers
+// make the view render gracefully instead of crashing on a shape mismatch.
+const asText = (v: unknown): string =>
+  Array.isArray(v)
+    ? v.filter(Boolean).map(String).join("\n\n")
+    : v == null
+      ? ""
+      : String(v);
+
+const asArray = (v: unknown): any[] => (Array.isArray(v) ? v : []);
+
+const num = (v: unknown): number => {
+  if (typeof v === "number") return isFinite(v) ? v : 0;
+  const n = parseFloat(String(v ?? "").replace(/[^0-9.-]/g, ""));
+  return isNaN(n) ? 0 : n;
+};
+
+const money = (v: unknown): string => `$${num(v).toLocaleString()}`;
+
 export function ProposalView({ proposal }: { proposal: Proposal }) {
+  // Treat as loose at runtime — the DB row may not match the strict type.
+  const p = (proposal ?? {}) as any;
+
+  const subject = asText(p.subject ?? p.title);
+  const overview = asText(p.overview);
+  const whyUs = asText(p.whyUs ?? p.why_us);
+  const scope = asArray(p.scope);
+  const deliverables = asArray(p.deliverables);
+  const timeline = asArray(p.timeline);
+
+  const inv = (p.investment ?? {}) as any;
+  const breakdown = asArray(inv.breakdown ?? inv.lineItems ?? inv.line_items);
+  const total = num(inv.total);
+  const paymentTerms = asText(inv.paymentTerms ?? inv.depositTerms ?? inv.terms);
+  const hasInvestment = breakdown.length > 0 || total > 0;
+
   return (
     <View style={styles.container}>
-      <Text style={styles.subject}>{proposal.subject}</Text>
+      {subject ? <Text style={styles.subject}>{subject}</Text> : null}
 
-      <Section title="Overview">
-        <Text style={styles.body}>{proposal.overview}</Text>
-      </Section>
+      {overview ? (
+        <Section title="Overview">
+          <Text style={styles.body}>{overview}</Text>
+        </Section>
+      ) : null}
 
-      <Section title="Scope of Work">
-        {proposal.scope.map((s, i) => (
-          <Text key={i} style={styles.bullet}>
-            •  {s}
-          </Text>
-        ))}
-      </Section>
-
-      <Section title="Deliverables">
-        {proposal.deliverables.map((d, i) => (
-          <Text key={i} style={styles.bullet}>
-            •  {d}
-          </Text>
-        ))}
-      </Section>
-
-      <Section title="Timeline">
-        {proposal.timeline.map((t, i) => (
-          <View key={i} style={styles.timelineRow}>
-            <View style={styles.timelineDot} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.timelinePhase}>
-                {t.phase}{" "}
-                <Text style={styles.timelineDuration}>({t.duration})</Text>
-              </Text>
-              <Text style={styles.body}>{t.details}</Text>
-            </View>
-          </View>
-        ))}
-      </Section>
-
-      <Section title="Investment">
-        <View style={styles.investmentCard}>
-          {proposal.investment.breakdown.map((b, i) => (
-            <View key={i} style={styles.investmentRow}>
-              <Text style={styles.investmentItem}>{b.item}</Text>
-              <Text style={styles.investmentAmount}>
-                ${b.amount.toLocaleString()}
-              </Text>
-            </View>
-          ))}
-          <View style={[styles.investmentRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalAmount}>
-              ${proposal.investment.total.toLocaleString()}
+      {scope.length > 0 ? (
+        <Section title="Scope of Work">
+          {scope.map((s, i) => (
+            <Text key={i} style={styles.bullet}>
+              •  {asText(s)}
             </Text>
-          </View>
-          <Text style={styles.paymentTerms}>
-            {proposal.investment.paymentTerms}
-          </Text>
-        </View>
-      </Section>
+          ))}
+        </Section>
+      ) : null}
 
-      <Section title="Why Us">
-        <Text style={styles.body}>{proposal.whyUs}</Text>
-      </Section>
+      {deliverables.length > 0 ? (
+        <Section title="Deliverables">
+          {deliverables.map((d, i) => (
+            <Text key={i} style={styles.bullet}>
+              •  {asText(d)}
+            </Text>
+          ))}
+        </Section>
+      ) : null}
+
+      {timeline.length > 0 ? (
+        <Section title="Timeline">
+          {timeline.map((t, i) => {
+            const phase = asText(t?.phase);
+            const duration = asText(t?.duration);
+            const details = asText(t?.details ?? t?.detail ?? t?.description);
+            return (
+              <View key={i} style={styles.timelineRow}>
+                <View style={styles.timelineDot} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.timelinePhase}>
+                    {phase}
+                    {duration ? (
+                      <Text style={styles.timelineDuration}> ({duration})</Text>
+                    ) : null}
+                  </Text>
+                  {details ? <Text style={styles.body}>{details}</Text> : null}
+                </View>
+              </View>
+            );
+          })}
+        </Section>
+      ) : null}
+
+      {hasInvestment ? (
+        <Section title="Investment">
+          <View style={styles.investmentCard}>
+            {breakdown.map((b, i) => (
+              <View key={i} style={styles.investmentRow}>
+                <Text style={styles.investmentItem}>{asText(b?.item ?? b?.label)}</Text>
+                <Text style={styles.investmentAmount}>{money(b?.amount)}</Text>
+              </View>
+            ))}
+            <View style={[styles.investmentRow, styles.totalRow]}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalAmount}>{money(total)}</Text>
+            </View>
+            {paymentTerms ? (
+              <Text style={styles.paymentTerms}>{paymentTerms}</Text>
+            ) : null}
+          </View>
+        </Section>
+      ) : null}
+
+      {whyUs ? (
+        <Section title="Why Us">
+          <Text style={styles.body}>{whyUs}</Text>
+        </Section>
+      ) : null}
     </View>
   );
 }

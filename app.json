@@ -9,17 +9,37 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.amerifilms.bidreel",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.amerifilms.bidreel",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "color": "#F5B82E"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "BidReel uses your photos so you can add your studio logo to proposals."
+        }
+      ],
+      "./plugins/withFmtConstevalFix"
     ],
     "experiments": {
       "typedRoutes": false
@@ -29,6 +49,12 @@
       "eas": {
         "projectId": "53b82e73-42a1-4e05-b681-17222f55f10e"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/53b82e73-42a1-4e05-b681-17222f55f10e"
     }
   }
 }

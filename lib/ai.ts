@@ -13,6 +13,52 @@ export async function deleteAccount(): Promise<void> {
   await supabase.auth.signOut();
 }
 
+export interface ShareResult {
+  url: string;
+  token: string;
+  status: string;
+}
+
+/**
+ * Creates (or reuses) a public share link for a proposal via the
+ * `share-proposal` Edge Function. Returns the client-facing URL.
+ */
+export async function shareProposal(bidId: string): Promise<ShareResult> {
+  const { data, error } = await supabase.functions.invoke<ShareResult>(
+    "share-proposal",
+    { body: { bidId } },
+  );
+  if (error) throw new Error(error.message || "Couldn't create share link");
+  if (!data?.url) {
+    throw new Error(
+      (data as unknown as { error?: string })?.error ?? "No link returned",
+    );
+  }
+  return data;
+}
+
+export interface ConnectResult {
+  url?: string;
+  connected?: boolean;
+}
+
+/**
+ * Starts (or resumes) Stripe Connect onboarding so the producer can collect
+ * deposits to their own account. Returns a hosted onboarding URL, or
+ * { connected: true } if payouts are already set up.
+ */
+export async function connectStripe(): Promise<ConnectResult> {
+  const { data, error } = await supabase.functions.invoke<ConnectResult>(
+    "stripe-connect",
+    { body: {} },
+  );
+  if (error) throw new Error(error.message || "Couldn't start Stripe setup");
+  if ((data as unknown as { error?: string })?.error) {
+    throw new Error((data as unknown as { error?: string }).error);
+  }
+  return data ?? {};
+}
+
 export interface GenerateParams {
   template: string;
   clientName: string;

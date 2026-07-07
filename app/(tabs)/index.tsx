@@ -8,6 +8,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { Bid } from "@/lib/types";
@@ -55,6 +56,43 @@ export default function DashboardScreen() {
       0,
     );
 
+  // "Needs attention" nudges, highest-priority first. Driven by the tracked
+  // signals (first_viewed_at / accepted_at / deposit_status), not just status.
+  const nudges = [
+    {
+      key: "accepted",
+      icon: "checkmark-circle" as const,
+      color: Colors.green,
+      items: bids.filter(
+        (b) => b.accepted_at && b.deposit_status !== "paid" && b.status !== "lost",
+      ),
+      label: (n: number) =>
+        `${n} accepted · deposit pending`,
+    },
+    {
+      key: "opened",
+      icon: "eye" as const,
+      color: Colors.blue,
+      items: bids.filter(
+        (b) =>
+          b.first_viewed_at &&
+          !b.accepted_at &&
+          b.status !== "won" &&
+          b.status !== "lost",
+      ),
+      label: (n: number) => `${n} opened · awaiting reply`,
+    },
+    {
+      key: "sent",
+      icon: "paper-plane" as const,
+      color: Colors.textSecondary,
+      items: bids.filter(
+        (b) => b.share_token && !b.first_viewed_at && b.status === "sent",
+      ),
+      label: (n: number) => `${n} sent · not opened yet`,
+    },
+  ].filter((n) => n.items.length > 0);
+
   return (
     <Screen>
       <FlatList
@@ -93,6 +131,28 @@ export default function DashboardScreen() {
                 tint={Colors.purple}
               />
             </View>
+
+            {nudges.length > 0 && (
+              <View style={styles.nudgeCard}>
+                <Text style={styles.nudgeTitle}>Needs attention</Text>
+                {nudges.map((n) => (
+                  <Pressable
+                    key={n.key}
+                    style={styles.nudgeRow}
+                    onPress={() => router.push(`/bid/${n.items[0].id}`)}
+                  >
+                    <Ionicons name={n.icon} size={18} color={n.color} />
+                    <Text style={styles.nudgeText}>{n.label(n.items.length)}</Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color={Colors.textMuted}
+                    />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
             <Text style={styles.sectionTitle}>Recent Bids</Text>
           </View>
         }
@@ -155,6 +215,24 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     padding: Spacing.md,
   },
+  nudgeCard: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    gap: 4,
+  },
+  nudgeTitle: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  nudgeRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 7 },
+  nudgeText: { flex: 1, color: Colors.text, fontSize: 15, fontWeight: "600" },
   bidClient: { color: Colors.text, fontSize: 16, fontWeight: "700" },
   bidDate: { color: Colors.textMuted, fontSize: 12 },
   bidAmount: { color: Colors.text, fontSize: 15, fontWeight: "700" },
