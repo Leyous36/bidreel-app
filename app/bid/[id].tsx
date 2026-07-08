@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Share,
+  Modal,
 } from "react-native";
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
@@ -15,7 +16,7 @@ import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
-import { proposalToText, shareProposal } from "@/lib/ai";
+import { proposalToText, shareProposal, generateFollowup } from "@/lib/ai";
 import { Bid, BidEvent, BidStatus, STATUS_LABELS } from "@/lib/types";
 import { ProposalView } from "@/components/ProposalView";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
@@ -41,6 +42,9 @@ export default function BidDetailScreen() {
   const [events, setEvents] = useState<BidEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
+  const [followupVisible, setFollowupVisible] = useState(false);
+  const [followupText, setFollowupText] = useState("");
+  const [draftingFollowup, setDraftingFollowup] = useState(false);
   const router = useRouter();
 
   const load = useCallback(async () => {
@@ -121,6 +125,43 @@ export default function BidDetailScreen() {
     await Clipboard.setStringAsync(text);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert("Copied", "Proposal copied — paste it into an email or doc.");
+  }
+
+  async function draftFollowup() {
+    if (!bid) return;
+    try {
+      setDraftingFollowup(true);
+      setFollowupText("");
+      setFollowupVisible(true);
+      const daysSince = Math.max(
+        1,
+        Math.floor((Date.now() - new Date(bid.updated_at).getTime()) / 86400000),
+      );
+      const msg = await generateFollowup({
+        clientName: bid.client_name,
+        subject: bid.proposal?.subject ?? "your video project",
+        companyName: profile?.company_name,
+        producerName: profile?.producer_name,
+        status: bid.status,
+        daysSince,
+      });
+      setFollowupText(msg);
+    } catch (e: unknown) {
+      setFollowupVisible(false);
+      Alert.alert(
+        "Couldn't draft",
+        e instanceof Error ? e.message : "Try again in a moment.",
+      );
+    } finally {
+      setDraftingFollowup(false);
+    }
+  }
+
+  async function copyFollowup() {
+    if (!followupText) return;
+    await Clipboard.setStringAsync(followupText);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert("Copied", "Follow-up copied — paste it into your email or text.");
   }
 
   async function deleteBid() {
@@ -233,6 +274,17 @@ export default function BidDetailScreen() {
             )}
           </Pressable>
 
+          {["sent", "viewed", "pending"].includes(bid.status) ? (
+            <Pressable
+              style={styles.followupButton}
+              onPress={draftFollowup}
+              disabled={draftingFollowup}
+            >
+              <Ionicons name="sparkles" size={18} color={Colors.accent} />
+              <Text style={styles.followupButtonText}>Draft Follow-up</Text>
+            </Pressable>
+          ) : null}
+
           <View style={styles.actions}>
             <Pressable style={styles.secondaryButton} onPress={copyProposal}>
               <Ionicons name="copy" size={18} color={Colors.text} />
@@ -246,6 +298,44 @@ export default function BidDetailScreen() {
 
         {bid.share_token ? <ActivityTimeline events={events} /> : null}
       </ScrollView>
+
+      <Modal
+        visible={followupVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFollowupVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Follow-up draft</Text>
+            {draftingFollowup ? (
+              <View style={styles.followupLoading}>
+                <ActivityIndicator color={Colors.accent} />
+                <Text style={styles.modalSub}>Writing a follow-up…</Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.followupScroll}>
+                <Text style={styles.followupText}>{followupText}</Text>
+              </ScrollView>
+            )}
+            <View style={styles.modalActions}>
+              <Pressable
+                style={styles.modalCancel}
+                onPress={() => setFollowupVisible(false)}
+              >
+                <Text style={styles.modalCancelText}>Close</Text>
+              </Pressable>
+              <Pressable
+                style={styles.modalSend}
+                onPress={copyFollowup}
+                disabled={draftingFollowup || !followupText}
+              >
+                <Text style={styles.modalSendText}>Copy</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -315,4 +405,58 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  followupButton: {
+    flexDirection: "row",
+    gap: 8,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.accent + "66",
+    backgroundColor: Colors.surface,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  followupButtonText: { color: Colors.accent, fontSize: 15, fontWeight: "700" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "#000A",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.md,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 440,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+  },
+  modalTitle: { color: Colors.text, fontSize: 17, fontWeight: "800" },
+  modalSub: { color: Colors.textSecondary, fontSize: 13 },
+  modalActions: { flexDirection: "row", gap: Spacing.sm, marginTop: 4 },
+  modalCancel: {
+    flex: 1,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalCancelText: { color: Colors.textSecondary, fontSize: 15, fontWeight: "600" },
+  modalSend: {
+    flex: 1,
+    backgroundColor: Colors.accent,
+    borderRadius: Radius.md,
+    paddingVertical: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalSendText: { color: "#1A1405", fontSize: 15, fontWeight: "700" },
+  followupLoading: { alignItems: "center", gap: 10, paddingVertical: 28 },
+  followupScroll: { maxHeight: 300, marginVertical: 4 },
+  followupText: { color: Colors.text, fontSize: 14, lineHeight: 21 },
 });

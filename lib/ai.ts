@@ -93,6 +93,27 @@ export async function generateProposal(
   return data;
 }
 
+/**
+ * Drafts a short follow-up message for a proposal awaiting a response, via the
+ * `generate-followup` Edge Function (holds the Anthropic key server-side).
+ */
+export async function generateFollowup(params: {
+  clientName: string;
+  subject: string;
+  companyName?: string | null;
+  producerName?: string | null;
+  status: string;
+  daysSince: number;
+}): Promise<string> {
+  const { data, error } = await supabase.functions.invoke<{
+    message?: string;
+    error?: string;
+  }>("generate-followup", { body: params });
+  if (error) throw new Error(error.message || "Could not draft a follow-up.");
+  if (data?.error) throw new Error(data.error);
+  return data?.message ?? "";
+}
+
 /** Format a proposal as plain text for copy/paste into email. */
 export function proposalToText(
   p: Proposal,

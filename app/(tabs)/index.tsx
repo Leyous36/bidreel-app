@@ -69,7 +69,11 @@ const NUDGE_SUB: Record<string, string> = {
   accepted: "Send the payment link to lock it in",
   opened: "They're interested — reply while it's warm",
   sent: "Nudge them with a friendly follow-up",
+  stale: "Open the bid and tap Draft Follow-up — AI writes the nudge",
 };
+
+/** Proposals with no movement in this many days count as "gone quiet". */
+const COLD_DAYS = 3;
 
 export default function DashboardScreen() {
   const { session, profile } = useAuth();
@@ -167,6 +171,24 @@ export default function DashboardScreen() {
         (b) => b.share_token && !b.first_viewed_at && b.status === "sent",
       ),
       label: (n: number) => `${n} sent · not opened yet`,
+    },
+    {
+      key: "stale",
+      icon: "alarm" as const,
+      color: Colors.accent,
+      items: bids
+        .filter(
+          (b) =>
+            ["sent", "viewed", "pending"].includes(b.status) &&
+            Date.now() - new Date(b.updated_at).getTime() >
+              COLD_DAYS * 86400000,
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime(),
+        ),
+      label: (n: number) =>
+        `${n} gone quiet · ${COLD_DAYS}+ days without movement`,
     },
   ].filter((n) => n.items.length > 0);
 
