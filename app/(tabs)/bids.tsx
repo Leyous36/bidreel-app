@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { Bid, BidStatus } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ShareButton } from "@/components/ShareButton";
 import { Screen } from "@/components/ui";
 import { Colors, Radius, Spacing } from "@/constants/Colors";
 import { getTemplate } from "@/lib/templates";
@@ -119,6 +120,14 @@ export default function BidsScreen() {
               </Text>
               <StatusBadge status={item.status} />
             </View>
+            <ShareButton
+              bid={item}
+              onShared={(patch) =>
+                setBids((prev) =>
+                  prev.map((b) => (b.id === item.id ? { ...b, ...patch } : b)),
+                )
+              }
+            />
           </Pressable>
         )}
       />
@@ -159,6 +168,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
+    gap: Spacing.sm,
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,

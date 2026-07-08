@@ -17,6 +17,7 @@ import { StatCard } from "@/components/StatCard";
 import { Sparkline } from "@/components/Sparkline";
 import { FadeInView } from "@/components/FadeInView";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ShareButton } from "@/components/ShareButton";
 import { Screen } from "@/components/ui";
 import { Colors, Radius, Spacing } from "@/constants/Colors";
 
@@ -392,6 +393,14 @@ export default function DashboardScreen() {
                 </Text>
                 <StatusBadge status={item.status} />
               </View>
+              <ShareButton
+                bid={item}
+                onShared={(patch) =>
+                  setBids((prev) =>
+                    prev.map((b) => (b.id === item.id ? { ...b, ...patch } : b)),
+                  )
+                }
+              />
             </Pressable>
             </FadeInView>
           );
