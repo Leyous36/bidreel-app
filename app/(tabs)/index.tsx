@@ -12,7 +12,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
-import { Bid } from "@/lib/types";
+import { Bid, proposalValue } from "@/lib/types";
 import { StatCard } from "@/components/StatCard";
 import { Sparkline } from "@/components/Sparkline";
 import { FadeInView } from "@/components/FadeInView";
@@ -35,7 +35,7 @@ const webTransition =
     : null;
 
 function amountOf(b: Bid): number {
-  return b.proposal?.investment?.total ?? b.budget ?? 0;
+  return proposalValue(b.proposal) || b.budget || 0;
 }
 
 /** Cumulative weekly buckets for a mini trend line (oldest → newest). */

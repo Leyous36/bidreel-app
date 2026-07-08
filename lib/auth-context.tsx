@@ -9,6 +9,7 @@ import { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { Profile } from "./types";
 import { initPurchases, getEntitlementTier } from "./revenue-cat";
+import { identifyUser, resetAnalytics } from "./analytics";
 import {
   registerForPushNotificationsAsync,
   clearPushRegistration,
@@ -44,9 +45,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (data) {
       // RevenueCat entitlement wins over the DB column when active.
       const rcTier = await getEntitlementTier();
-      setProfile({
+      const merged: Profile = {
         ...(data as Profile),
         subscription_tier: rcTier ?? (data as Profile).subscription_tier,
+      };
+      setProfile(merged);
+      identifyUser(userId, {
+        email: merged.email,
+        company_name: merged.company_name,
+        producer_name: merged.producer_name,
+        subscription_tier: merged.subscription_tier,
       });
     }
   }, []);
@@ -73,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         clearPushRegistration();
         setProfile(null);
+        resetAnalytics();
       }
     });
 

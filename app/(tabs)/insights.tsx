@@ -9,7 +9,7 @@ import {
 import { useFocusEffect } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
-import { Bid } from "@/lib/types";
+import { Bid, proposalValue } from "@/lib/types";
 import { TEMPLATES } from "@/lib/templates";
 import { MetricCard } from "@/components/MetricCard";
 import { Screen } from "@/components/ui";
@@ -18,7 +18,7 @@ import { Colors, Radius, Spacing } from "@/constants/Colors";
 const ACTIVE = ["sent", "viewed", "pending", "accepted"];
 
 function amountOf(b: Bid): number {
-  return b.proposal?.investment?.total ?? b.budget ?? 0;
+  return proposalValue(b.proposal) || b.budget || 0;
 }
 
 export default function InsightsScreen() {

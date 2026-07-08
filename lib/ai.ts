@@ -140,11 +140,22 @@ export function proposalToText(
   );
   lines.push("");
   lines.push("INVESTMENT");
-  p.investment.breakdown.forEach((b) =>
-    lines.push(`• ${b.item}: $${b.amount.toLocaleString()}`),
-  );
-  lines.push(`Total: $${p.investment.total.toLocaleString()}`);
-  lines.push(`Payment terms: ${p.investment.paymentTerms}`);
+  if (p.tiers && p.tiers.length > 0) {
+    p.tiers.forEach((t) => {
+      const flag = t.recommended ? "  (Recommended)" : "";
+      lines.push(`${t.name.toUpperCase()} — $${t.total.toLocaleString()}${flag}`);
+      if (t.tagline) lines.push(t.tagline);
+      t.includes.forEach((inc) => lines.push(`• ${inc}`));
+      lines.push("");
+    });
+    if (p.paymentTerms) lines.push(`Payment terms: ${p.paymentTerms}`);
+  } else if (p.investment) {
+    p.investment.breakdown.forEach((b) =>
+      lines.push(`• ${b.item}: $${b.amount.toLocaleString()}`),
+    );
+    lines.push(`Total: $${p.investment.total.toLocaleString()}`);
+    lines.push(`Payment terms: ${p.investment.paymentTerms}`);
+  }
   lines.push("");
   lines.push("WHY US");
   lines.push(p.whyUs);

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Share,
   Modal,
+  TextInput,
 } from "react-native";
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
@@ -17,6 +18,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { proposalToText, shareProposal, generateFollowup } from "@/lib/ai";
+import { exportProposalPdf } from "@/lib/pdf";
+import { sendProposalEmail } from "@/lib/email";
+import { track } from "@/lib/analytics";
 import { Bid, BidEvent, BidStatus, STATUS_LABELS } from "@/lib/types";
 import { ProposalView } from "@/components/ProposalView";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
@@ -37,7 +41,7 @@ const PUBLIC_BASE = "https://bidreel.io/p/";
 
 export default function BidDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { profile } = useAuth();
+  const { session, profile } = useAuth();
   const [bid, setBid] = useState<Bid | null>(null);
   const [events, setEvents] = useState<BidEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +49,10 @@ export default function BidDetailScreen() {
   const [followupVisible, setFollowupVisible] = useState(false);
   const [followupText, setFollowupText] = useState("");
   const [draftingFollowup, setDraftingFollowup] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [emailVisible, setEmailVisible] = useState(false);
+  const [clientEmail, setClientEmail] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
   const router = useRouter();
 
   const load = useCallback(async () => {
@@ -92,6 +100,7 @@ export default function BidDetailScreen() {
       );
       await Clipboard.setStringAsync(url);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      track("proposal_shared");
       await Share.share({ message: url, url });
     } catch (e) {
       Alert.alert(
@@ -124,7 +133,60 @@ export default function BidDetailScreen() {
     }
     await Clipboard.setStringAsync(text);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    track("proposal_copied");
     Alert.alert("Copied", "Proposal copied — paste it into an email or doc.");
+  }
+
+  async function exportPdf() {
+    if (!bid?.proposal) return;
+    try {
+      setExporting(true);
+      await exportProposalPdf(bid.proposal, bid.client_name, profile);
+      track("proposal_pdf_exported");
+    } catch (e: unknown) {
+      Alert.alert(
+        "Export failed",
+        e instanceof Error ? e.message : "Could not create the PDF.",
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function sendEmail() {
+    if (!bid?.proposal) return;
+    const email = clientEmail.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      Alert.alert("Check the email", "Enter a valid client email address.");
+      return;
+    }
+    try {
+      setSendingEmail(true);
+      await sendProposalEmail({
+        to: email,
+        proposal: bid.proposal,
+        clientName: bid.client_name,
+        companyName: profile?.company_name,
+        replyTo: session?.user?.email,
+        subject: bid.proposal.subject,
+        proposalUrl: bid.share_token
+          ? `${PUBLIC_BASE}${bid.share_token}`
+          : undefined,
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setEmailVisible(false);
+      setClientEmail("");
+      track("proposal_emailed");
+      if (bid.status === "draft") setStatus("sent");
+      Alert.alert("Sent", `Proposal emailed to ${email}.`);
+    } catch (e: unknown) {
+      Alert.alert(
+        "Couldn't send",
+        e instanceof Error ? e.message : "Something went wrong — try again.",
+      );
+    } finally {
+      setSendingEmail(false);
+    }
   }
 
   async function draftFollowup() {
@@ -286,6 +348,30 @@ export default function BidDetailScreen() {
           ) : null}
 
           <View style={styles.actions}>
+            <Pressable
+              style={styles.secondaryButton}
+              onPress={() => setEmailVisible(true)}
+            >
+              <Ionicons name="mail" size={18} color={Colors.text} />
+              <Text style={styles.secondaryButtonText}>Email to Client</Text>
+            </Pressable>
+            <Pressable
+              style={styles.secondaryButton}
+              onPress={exportPdf}
+              disabled={exporting}
+            >
+              {exporting ? (
+                <ActivityIndicator color={Colors.text} size="small" />
+              ) : (
+                <>
+                  <Ionicons name="document-text" size={18} color={Colors.text} />
+                  <Text style={styles.secondaryButtonText}>Export PDF</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+
+          <View style={styles.actions}>
             <Pressable style={styles.secondaryButton} onPress={copyProposal}>
               <Ionicons name="copy" size={18} color={Colors.text} />
               <Text style={styles.secondaryButtonText}>Copy Text</Text>
@@ -298,6 +384,55 @@ export default function BidDetailScreen() {
 
         {bid.share_token ? <ActivityTimeline events={events} /> : null}
       </ScrollView>
+
+      <Modal
+        visible={emailVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEmailVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Email to client</Text>
+            <Text style={styles.modalSub}>
+              Send the {bid.client_name} proposal straight to their inbox.
+              Replies come back to you.
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="client@email.com"
+              placeholderTextColor={Colors.textMuted}
+              value={clientEmail}
+              onChangeText={setClientEmail}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              autoFocus
+              editable={!sendingEmail}
+            />
+            <View style={styles.modalActions}>
+              <Pressable
+                style={styles.modalCancel}
+                onPress={() => setEmailVisible(false)}
+                disabled={sendingEmail}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={styles.modalSend}
+                onPress={sendEmail}
+                disabled={sendingEmail}
+              >
+                {sendingEmail ? (
+                  <ActivityIndicator color="#1A1405" size="small" />
+                ) : (
+                  <Text style={styles.modalSendText}>Send</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={followupVisible}
@@ -435,7 +570,17 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   modalTitle: { color: Colors.text, fontSize: 17, fontWeight: "800" },
-  modalSub: { color: Colors.textSecondary, fontSize: 13 },
+  modalSub: { color: Colors.textSecondary, fontSize: 13, lineHeight: 18 },
+  modalInput: {
+    backgroundColor: Colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: Colors.text,
+    fontSize: 15,
+  },
   modalActions: { flexDirection: "row", gap: Spacing.sm, marginTop: 4 },
   modalCancel: {
     flex: 1,

@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, View } from "react-native";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { initAnalytics } from "@/lib/analytics";
 import { Colors } from "@/constants/Colors";
 
 function RootNavigator() {
@@ -57,6 +58,10 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
   return (
     <AuthProvider>
       <StatusBar style="light" />

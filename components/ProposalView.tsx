@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Colors, Radius, Spacing } from "@/constants/Colors";
-import { Proposal } from "@/lib/types";
+import { PricingTier, Proposal } from "@/lib/types";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -12,123 +12,107 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-// --- Defensive helpers -------------------------------------------------------
-// Stored proposals are AI-generated and can vary in shape (missing fields, or
-// alternate field names like lineItems/detail/depositTerms). These normalizers
-// make the view render gracefully instead of crashing on a shape mismatch.
-const asText = (v: unknown): string =>
-  Array.isArray(v)
-    ? v.filter(Boolean).map(String).join("\n\n")
-    : v == null
-      ? ""
-      : String(v);
-
-const asArray = (v: unknown): any[] => (Array.isArray(v) ? v : []);
-
-const num = (v: unknown): number => {
-  if (typeof v === "number") return isFinite(v) ? v : 0;
-  const n = parseFloat(String(v ?? "").replace(/[^0-9.-]/g, ""));
-  return isNaN(n) ? 0 : n;
-};
-
-const money = (v: unknown): string => `$${num(v).toLocaleString()}`;
+function TierCard({ tier }: { tier: PricingTier }) {
+  const recommended = !!tier.recommended;
+  return (
+    <View style={[styles.tierCard, recommended && styles.tierCardRecommended]}>
+      <View style={styles.tierHeader}>
+        <Text style={styles.tierName}>{tier.name}</Text>
+        {recommended && (
+          <View style={styles.recBadge}>
+            <Text style={styles.recBadgeText}>RECOMMENDED</Text>
+          </View>
+        )}
+      </View>
+      <Text style={styles.tierTotal}>${tier.total.toLocaleString()}</Text>
+      {!!tier.tagline && <Text style={styles.tierTagline}>{tier.tagline}</Text>}
+      <View style={styles.tierDivider} />
+      {tier.includes.map((inc, i) => (
+        <Text key={i} style={styles.tierInclude}>
+          •  {inc}
+        </Text>
+      ))}
+    </View>
+  );
+}
 
 export function ProposalView({ proposal }: { proposal: Proposal }) {
-  // Treat as loose at runtime — the DB row may not match the strict type.
-  const p = (proposal ?? {}) as any;
-
-  const subject = asText(p.subject ?? p.title);
-  const overview = asText(p.overview);
-  const whyUs = asText(p.whyUs ?? p.why_us);
-  const scope = asArray(p.scope);
-  const deliverables = asArray(p.deliverables);
-  const timeline = asArray(p.timeline);
-
-  const inv = (p.investment ?? {}) as any;
-  const breakdown = asArray(inv.breakdown ?? inv.lineItems ?? inv.line_items);
-  const total = num(inv.total);
-  const paymentTerms = asText(inv.paymentTerms ?? inv.depositTerms ?? inv.terms);
-  const hasInvestment = breakdown.length > 0 || total > 0;
-
+  const hasTiers = !!proposal.tiers && proposal.tiers.length > 0;
   return (
     <View style={styles.container}>
-      {subject ? <Text style={styles.subject}>{subject}</Text> : null}
+      <Text style={styles.subject}>{proposal.subject}</Text>
 
-      {overview ? (
-        <Section title="Overview">
-          <Text style={styles.body}>{overview}</Text>
-        </Section>
-      ) : null}
+      <Section title="Overview">
+        <Text style={styles.body}>{proposal.overview}</Text>
+      </Section>
 
-      {scope.length > 0 ? (
-        <Section title="Scope of Work">
-          {scope.map((s, i) => (
-            <Text key={i} style={styles.bullet}>
-              •  {asText(s)}
-            </Text>
-          ))}
-        </Section>
-      ) : null}
+      <Section title="Scope of Work">
+        {proposal.scope.map((s, i) => (
+          <Text key={i} style={styles.bullet}>
+            •  {s}
+          </Text>
+        ))}
+      </Section>
 
-      {deliverables.length > 0 ? (
-        <Section title="Deliverables">
-          {deliverables.map((d, i) => (
-            <Text key={i} style={styles.bullet}>
-              •  {asText(d)}
-            </Text>
-          ))}
-        </Section>
-      ) : null}
+      <Section title="Deliverables">
+        {proposal.deliverables.map((d, i) => (
+          <Text key={i} style={styles.bullet}>
+            •  {d}
+          </Text>
+        ))}
+      </Section>
 
-      {timeline.length > 0 ? (
-        <Section title="Timeline">
-          {timeline.map((t, i) => {
-            const phase = asText(t?.phase);
-            const duration = asText(t?.duration);
-            const details = asText(t?.details ?? t?.detail ?? t?.description);
-            return (
-              <View key={i} style={styles.timelineRow}>
-                <View style={styles.timelineDot} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.timelinePhase}>
-                    {phase}
-                    {duration ? (
-                      <Text style={styles.timelineDuration}> ({duration})</Text>
-                    ) : null}
-                  </Text>
-                  {details ? <Text style={styles.body}>{details}</Text> : null}
-                </View>
-              </View>
-            );
-          })}
-        </Section>
-      ) : null}
+      <Section title="Timeline">
+        {proposal.timeline.map((t, i) => (
+          <View key={i} style={styles.timelineRow}>
+            <View style={styles.timelineDot} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.timelinePhase}>
+                {t.phase}{" "}
+                <Text style={styles.timelineDuration}>({t.duration})</Text>
+              </Text>
+              <Text style={styles.body}>{t.details}</Text>
+            </View>
+          </View>
+        ))}
+      </Section>
 
-      {hasInvestment ? (
-        <Section title="Investment">
+      <Section title="Investment">
+        {hasTiers ? (
+          <View style={styles.tierStack}>
+            {proposal.tiers!.map((tier, i) => (
+              <TierCard key={i} tier={tier} />
+            ))}
+            {!!proposal.paymentTerms && (
+              <Text style={styles.paymentTerms}>{proposal.paymentTerms}</Text>
+            )}
+          </View>
+        ) : proposal.investment ? (
           <View style={styles.investmentCard}>
-            {breakdown.map((b, i) => (
+            {proposal.investment.breakdown.map((b, i) => (
               <View key={i} style={styles.investmentRow}>
-                <Text style={styles.investmentItem}>{asText(b?.item ?? b?.label)}</Text>
-                <Text style={styles.investmentAmount}>{money(b?.amount)}</Text>
+                <Text style={styles.investmentItem}>{b.item}</Text>
+                <Text style={styles.investmentAmount}>
+                  ${b.amount.toLocaleString()}
+                </Text>
               </View>
             ))}
             <View style={[styles.investmentRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalAmount}>{money(total)}</Text>
+              <Text style={styles.totalAmount}>
+                ${proposal.investment.total.toLocaleString()}
+              </Text>
             </View>
-            {paymentTerms ? (
-              <Text style={styles.paymentTerms}>{paymentTerms}</Text>
-            ) : null}
+            <Text style={styles.paymentTerms}>
+              {proposal.investment.paymentTerms}
+            </Text>
           </View>
-        </Section>
-      ) : null}
+        ) : null}
+      </Section>
 
-      {whyUs ? (
-        <Section title="Why Us">
-          <Text style={styles.body}>{whyUs}</Text>
-        </Section>
-      ) : null}
+      <Section title="Why Us">
+        <Text style={styles.body}>{proposal.whyUs}</Text>
+      </Section>
     </View>
   );
 }
@@ -156,6 +140,55 @@ const styles = StyleSheet.create({
   },
   timelinePhase: { color: Colors.text, fontSize: 15, fontWeight: "700" },
   timelineDuration: { color: Colors.textMuted, fontWeight: "400" },
+
+  // --- Tiered pricing ---
+  tierStack: { gap: Spacing.md },
+  tierCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    gap: 6,
+  },
+  tierCardRecommended: {
+    borderColor: Colors.accent,
+    borderWidth: 2,
+    backgroundColor: Colors.accent + "12",
+  },
+  tierHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  tierName: {
+    color: Colors.text,
+    fontSize: 17,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  recBadge: {
+    backgroundColor: Colors.accent,
+    borderRadius: Radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  recBadgeText: {
+    color: "#1A1405",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+  },
+  tierTotal: { color: Colors.accent, fontSize: 26, fontWeight: "800" },
+  tierTagline: { color: Colors.textMuted, fontSize: 13, fontStyle: "italic" },
+  tierDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: 6,
+  },
+  tierInclude: { color: Colors.textSecondary, fontSize: 14, lineHeight: 22 },
+
+  // --- Legacy single investment (old saved proposals) ---
   investmentCard: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.md,

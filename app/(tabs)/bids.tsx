@@ -11,7 +11,7 @@ import {
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
-import { Bid, BidStatus } from "@/lib/types";
+import { Bid, BidStatus, proposalValue } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ShareButton } from "@/components/ShareButton";
 import { Screen } from "@/components/ui";
@@ -113,8 +113,8 @@ export default function BidsScreen() {
               <Text style={styles.amount}>
                 $
                 {(
-                  item.proposal?.investment?.total ??
-                  item.budget ??
+                  proposalValue(item.proposal) ||
+                  item.budget ||
                   0
                 ).toLocaleString()}
               </Text>

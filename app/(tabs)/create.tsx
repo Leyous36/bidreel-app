@@ -13,6 +13,7 @@ import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { generateProposal } from "@/lib/ai";
+import { track } from "@/lib/analytics";
 import { TEMPLATES } from "@/lib/templates";
 import { FREE_PROPOSALS_PER_MONTH, Template } from "@/lib/types";
 import { TemplateCard } from "@/components/TemplateCard";
@@ -85,6 +86,12 @@ export default function CreateBidScreen() {
         uid: session.user.id,
       });
       await refreshProfile();
+
+      track("proposal_generated", {
+        template: template.name,
+        has_brief: !!brief.trim(),
+        has_budget: !!budget.trim(),
+      });
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       // Reset form and open the proposal

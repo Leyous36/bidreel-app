@@ -45,6 +45,19 @@
   .total .t{font-weight:800;font-size:18px}
   .total .v{font-weight:800;font-size:26px;color:var(--accent);font-variant-numeric:tabular-nums}
   .terms{color:var(--tmute);font-size:13.5px;margin-top:8px}
+  /* three-tier pricing */
+  .tiers{display:flex;flex-direction:column;gap:14px}
+  .tier{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px}
+  .tier.rec{border:2px solid var(--accent);background:rgba(245,184,46,.06)}
+  .tier .recbadge{position:absolute;top:-10px;left:16px;background:var(--accent);color:#1A1405;font-size:10px;
+    font-weight:800;letter-spacing:1px;padding:3px 10px;border-radius:999px}
+  .tier .thead{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .tier .tname{font-weight:800;font-size:17px}
+  .tier .ttotal{font-weight:800;font-size:24px;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .tier .ttag{color:var(--tmute);font-size:13px;font-style:italic;margin:3px 0 10px}
+  .tier ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+  .tier ul li{position:relative;padding-left:20px;color:var(--t2);font-size:14px;line-height:1.45}
+  .tier ul li::before{content:"";position:absolute;left:2px;top:8px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
   .footer{margin-top:48px;padding-top:22px;border-top:1px solid var(--border);text-align:center;color:var(--tmute);font-size:12.5px}
   .footer a{color:var(--t2);text-decoration:none}
   .badge{display:inline-flex;align-items:center;gap:7px;background:rgba(61,190,123,.13);border:1px solid var(--green);color:var(--green);
@@ -149,7 +162,19 @@
           '</span><span class="dur">'+esc(t.duration)+'</span></div>'+(t.details?'<div class="det">'+esc(t.details)+'</div>':'')+'</div>';}).join('')+
         '</section>';
     }
-    if(p.investment){
+    if(p.tiers && p.tiers.length){
+      var cards = p.tiers.map(function(t){
+        var rec = !!t.recommended;
+        var inc = (t.includes||[]).map(function(i){return '<li>'+esc(i)+'</li>';}).join('');
+        return '<div class="tier'+(rec?' rec':'')+'">'+
+          (rec?'<div class="recbadge">RECOMMENDED</div>':'')+
+          '<div class="thead"><span class="tname">'+esc(t.name)+'</span><span class="ttotal">'+money(t.total)+'</span></div>'+
+          (t.tagline?'<div class="ttag">'+esc(t.tagline)+'</div>':'')+
+          '<ul>'+inc+'</ul></div>';
+      }).join('');
+      html += '<section><div class="label">Investment</div><div class="tiers">'+cards+'</div>'+
+        (p.paymentTerms?'<div class="terms">'+esc(p.paymentTerms)+'</div>':'')+'</section>';
+    } else if(p.investment){
       var inv = p.investment;
       var rows = (inv.breakdown||[]).map(function(b){
         return '<div class="row"><span>'+esc(b.item)+'</span><span class="amt">'+money(b.amount)+'</span></div>';}).join('');

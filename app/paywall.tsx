@@ -1,13 +1,19 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, Alert, Pressable } from "react-native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { restorePurchases } from "@/lib/revenue-cat";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth-context";
+import { purchaseProduct, restorePurchases } from "@/lib/revenue-cat";
+import { track } from "@/lib/analytics";
+import { SubscriptionTier } from "@/lib/types";
 import { Button, Screen } from "@/components/ui";
 import { Colors, Radius, Spacing } from "@/constants/Colors";
 
 const TIERS = [
   {
     name: "BidReel Pro",
+    productId: "bidreel_pro_monthly",
     price: "$29.99/mo",
     features: [
       "Unlimited proposals",
@@ -21,6 +27,7 @@ const TIERS = [
   },
   {
     name: "BidReel Studio",
+    productId: "bidreel_studio_monthly",
     price: "$79.99/mo",
     features: [
       "Everything in Pro",
@@ -35,22 +42,70 @@ const TIERS = [
 ];
 
 export default function PaywallScreen() {
-  function handlePurchase(tier: string) {
-    // Phase 4: replace with RevenueCat purchase flow
-    // (react-native-purchases requires a dev build, not Expo Go).
-    Alert.alert(
-      "Coming soon",
-      `${tier} purchases activate in Phase 4 once RevenueCat and App Store products are configured.`,
-    );
+  const { session, refreshProfile } = useAuth();
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    track("paywall_viewed");
+  }, []);
+
+  async function applyTier(tier: SubscriptionTier) {
+    if (session && tier && tier !== "free") {
+      await supabase
+        .from("profiles")
+        .update({ subscription_tier: tier })
+        .eq("id", session.user.id);
+    }
+    await refreshProfile();
+  }
+
+  async function handlePurchase(productId: string) {
+    try {
+      setBusy(productId);
+      const tier = await purchaseProduct(productId);
+      await applyTier(tier);
+      track("purchase_completed", { product: productId, tier });
+      Alert.alert("You're in", "Your subscription is active. Enjoy BidReel.");
+      router.back();
+    } catch (e: unknown) {
+      // RevenueCat sets userCancelled on the error when the buyer backs out.
+      if (e && typeof e === "object" && (e as { userCancelled?: boolean }).userCancelled) {
+        return;
+      }
+      Alert.alert(
+        "Purchase failed",
+        e instanceof Error ? e.message : "Please try again.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleRestore() {
+    try {
+      setBusy("restore");
+      const tier = await restorePurchases();
+      if (tier && tier !== "free") {
+        await applyTier(tier);
+        Alert.alert("Restored", "Your subscription has been restored.");
+        router.back();
+      } else {
+        Alert.alert(
+          "Nothing to restore",
+          "No active BidReel subscription was found for this Apple ID.",
+        );
+      }
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Stop leaving money on the table</Text>
-        <Text style={styles.subtitle}>
-          7-day free trial · cancel anytime
-        </Text>
+        <Text style={styles.subtitle}>7-day free trial · cancel anytime</Text>
 
         {TIERS.map((tier) => (
           <View
@@ -74,14 +129,18 @@ export default function PaywallScreen() {
             </View>
             <Button
               title={`Start ${tier.name.replace("BidReel ", "")} Trial`}
-              onPress={() => handlePurchase(tier.name)}
+              onPress={() => handlePurchase(tier.productId)}
+              loading={busy === tier.productId}
+              disabled={busy !== null}
               variant={tier.highlight ? "primary" : "secondary"}
             />
           </View>
         ))}
 
-        <Pressable onPress={() => restorePurchases()}>
-          <Text style={styles.restoreText}>Restore Purchases</Text>
+        <Pressable onPress={handleRestore} disabled={busy !== null}>
+          <Text style={styles.restoreText}>
+            {busy === "restore" ? "Restoring…" : "Restore Purchases"}
+          </Text>
         </Pressable>
       </ScrollView>
     </Screen>

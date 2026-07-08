@@ -61,7 +61,15 @@ Deno.serve(async (req) => {
       .eq("id", uid)
       .single();
     const pct = profile?.default_deposit_pct ?? 50;
-    const total = bid.proposal?.investment?.total ?? bid.budget ?? 0;
+    // Headline value: recommended tier → first tier → legacy investment → budget.
+    const p = bid.proposal as {
+      tiers?: { total?: number; recommended?: boolean }[];
+      investment?: { total?: number };
+    } | null;
+    const recTier =
+      p?.tiers?.find((t) => t.recommended) ?? p?.tiers?.[0] ?? null;
+    const total =
+      recTier?.total ?? p?.investment?.total ?? bid.budget ?? 0;
     const depositCents = Math.round(total * (pct / 100) * 100);
 
     const isFirstShare = !bid.share_token;

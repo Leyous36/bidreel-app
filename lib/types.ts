@@ -38,18 +38,45 @@ export interface InvestmentLine {
   amount: number;
 }
 
+export interface PricingTier {
+  name: string; // "Essential" | "Professional" | "Premium"
+  tagline: string; // one short positioning line
+  total: number;
+  includes: string[]; // what this tier gets — concrete bullets
+  recommended?: boolean; // true on the Professional tier
+}
+
 export interface Proposal {
   subject: string;
   overview: string;
   scope: string[];
   deliverables: string[];
   timeline: TimelinePhase[];
-  investment: {
+  // New three-tier pricing. paymentTerms applies across all tiers.
+  tiers?: PricingTier[];
+  paymentTerms?: string;
+  // Legacy single-investment shape — kept optional so proposals generated
+  // before the tier upgrade still render and total correctly.
+  investment?: {
     total: number;
     breakdown: InvestmentLine[];
     paymentTerms: string;
   };
   whyUs: string;
+}
+
+/**
+ * Headline dollar value of a proposal, used for dashboards and the bids list.
+ * Prefers the recommended tier, falls back to the first tier, then to the
+ * legacy single investment total.
+ */
+export function proposalValue(p?: Proposal | null): number {
+  if (!p) return 0;
+  if (p.tiers && p.tiers.length > 0) {
+    const rec = p.tiers.find((t) => t.recommended) ?? p.tiers[0];
+    return rec?.total ?? 0;
+  }
+  return p.investment?.total ?? 0;
 }
 
 export interface Bid {
