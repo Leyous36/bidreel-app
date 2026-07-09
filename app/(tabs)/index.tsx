@@ -274,7 +274,10 @@ export default function DashboardScreen() {
                 value={String(scoped.length)}
                 delta={newThisWeek > 0 ? `+${newThisWeek} this wk` : null}
               >
-                <Sparkline data={bidsSeries} />
+                <View style={styles.trend}>
+                  <Sparkline data={bidsSeries} />
+                  <Text style={styles.trendCaption}>Last 6 weeks</Text>
+                </View>
               </StatCard>
 
               <StatCard
@@ -296,22 +299,17 @@ export default function DashboardScreen() {
                 value={`$${revenueWon.toLocaleString()}`}
                 delta={revThisWeek > 0 ? `+${shortMoney(revThisWeek)}` : null}
               >
-                <Sparkline data={revSeries} />
+                <View style={styles.trend}>
+                  <Sparkline data={revSeries} />
+                  <Text style={styles.trendCaption}>Last 6 weeks</Text>
+                </View>
               </StatCard>
 
               <StatCard
                 label="Pipeline"
                 value={`$${pipeline.toLocaleString()}`}
                 footnote={`${openBids.length} open`}
-              >
-                <Sparkline
-                  data={
-                    openBids.length
-                      ? openBids.slice(0, 7).map(amountOf).reverse()
-                      : [0]
-                  }
-                />
-              </StatCard>
+              />
             </View>
 
             {stageTotal > 0 && (
@@ -449,6 +447,14 @@ const styles = StyleSheet.create({
   },
   segTxtOn: { color: Colors.text },
   metrics: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
+
+  trend: { gap: Spacing.xs },
+  trendCaption: {
+    fontFamily: Fonts.regular,
+    fontSize: 11,
+    lineHeight: Math.round(11 * 1.4),
+    color: Colors.textMuted,
+  },
 
   meterTrack: {
     height: 4,

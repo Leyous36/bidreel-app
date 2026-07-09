@@ -20,20 +20,26 @@ import { ErrorBanner } from "@/components/ErrorBanner";
 import {
   Screen,
   PageHeader,
+  Button,
   Row,
   EmptyState,
+  LoadingState,
   useInteractive,
   focusRing,
 } from "@/components/ui";
 import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
 import { getTemplate } from "@/lib/templates";
 
+// Ordered to the real proposal lifecycle. Viewed/Accepted are the states the
+// trackable link produces — the highest-value ones to filter to for follow-up.
 const FILTERS: { key: BidStatus | "all"; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "won", label: "Won" },
-  { key: "pending", label: "Pending" },
+  { key: "draft", label: "Draft" },
   { key: "sent", label: "Sent" },
-  { key: "draft", label: "Drafts" },
+  { key: "viewed", label: "Viewed" },
+  { key: "accepted", label: "Accepted" },
+  { key: "pending", label: "Pending" },
+  { key: "won", label: "Won" },
   { key: "lost", label: "Lost" },
 ];
 
@@ -71,6 +77,7 @@ export default function BidsScreen() {
   const [filter, setFilter] = useState<BidStatus | "all">("all");
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const router = useRouter();
 
@@ -85,6 +92,7 @@ export default function BidsScreen() {
       setBids(data as Bid[]);
       setLoadError(false);
     }
+    setLoading(false);
   }, []);
 
   useFocusEffect(
@@ -100,9 +108,40 @@ export default function BidsScreen() {
     return true;
   });
 
+  const clearFilters = () => {
+    setFilter("all");
+    setSearch("");
+  };
+
+  // Distinguish loading, no-data, and no-match — one generic message can't
+  // serve all three (and "New bid" is a non-sequitur when a filter excludes rows).
+  const emptyComponent = loading ? (
+    <LoadingState />
+  ) : bids.length === 0 ? (
+    <EmptyState
+      message="No proposals yet — generate your first client-ready proposal."
+      actionLabel="New bid"
+      onAction={() => router.push("/(tabs)/create")}
+    />
+  ) : (
+    <EmptyState
+      message="No proposals match your filters."
+      actionLabel="Clear filters"
+      onAction={clearFilters}
+    />
+  );
+
   return (
     <Screen>
-      <PageHeader title="Bids" />
+      <PageHeader
+        title="Bids"
+        action={
+          <Button
+            title="New bid"
+            onPress={() => router.push("/(tabs)/create")}
+          />
+        }
+      />
       <View
         style={[styles.searchWrap, searchFocused && { borderColor: Colors.accent }]}
       >
@@ -142,13 +181,7 @@ export default function BidsScreen() {
         data={visible}
         keyExtractor={(b) => b.id}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <EmptyState
-            message="No bids match."
-            actionLabel="New bid"
-            onAction={() => router.push("/(tabs)/create")}
-          />
-        }
+        ListEmptyComponent={emptyComponent}
         renderItem={({ item }) => (
           <Row style={styles.bidRow} onPress={() => router.push(`/bid/${item.id}`)}>
             <View style={styles.rowMain}>

@@ -154,18 +154,24 @@ export default function CreateBidScreen() {
             </Text>
           </View>
           <Field
-            label="Client name *"
+            label="Client name"
             value={clientName}
             onChangeText={setClientName}
             placeholder="Wright Choice Plumbing"
           />
-          <Field
-            label="Project brief"
-            value={brief}
-            onChangeText={setBrief}
-            multiline
-            placeholder="What does the client want? Goals, audience, key messages, locations..."
-          />
+          <View style={styles.field}>
+            <Field
+              label="Project brief"
+              value={brief}
+              onChangeText={setBrief}
+              multiline
+              placeholder="What does the client want? Goals, audience, key messages, locations..."
+            />
+            <Text style={text.muted}>
+              The more you add — goals, audience, locations — the sharper the
+              proposal.
+            </Text>
+          </View>
           <Field
             label="Budget (optional)"
             value={budget}
@@ -179,15 +185,23 @@ export default function CreateBidScreen() {
             onChangeText={setTimeline}
             placeholder="Needs delivery by end of July"
           />
-          <Button
-            title={generating ? "Generating..." : "Generate Proposal"}
-            onPress={handleGenerate}
-            loading={generating}
-          />
+          <View style={styles.field}>
+            <Button
+              title={generating ? "Writing your proposal…" : "Generate Proposal"}
+              onPress={handleGenerate}
+              loading={generating}
+            />
+            {generating ? (
+              <Text style={[text.muted, { textAlign: "center" }]}>
+                Usually about 20 seconds. Keep this open.
+              </Text>
+            ) : null}
+          </View>
           <Button
             title="Back to templates"
             variant="ghost"
             onPress={() => setTemplate(null)}
+            disabled={generating}
           />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -202,5 +216,6 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   intro: { gap: Spacing.xs },
+  field: { gap: Spacing.sm },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
 });

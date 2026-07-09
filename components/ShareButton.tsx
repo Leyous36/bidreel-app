@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Share } from "react-native";
+import { ActivityIndicator, Platform, Share } from "react-native";
 import { Alert } from "@/lib/dialog";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -41,7 +41,17 @@ export function ShareButton({
       });
       await Clipboard.setStringAsync(url);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await Share.share({ message: url, url });
+      if (Platform.OS === "web") {
+        Alert.alert("Link copied", "Paste it to your client to send the proposal.");
+      } else {
+        // A dismissed/absent native share sheet must not surface as an error —
+        // the link is already created and copied to the clipboard.
+        try {
+          await Share.share({ message: url, url });
+        } catch {
+          /* user dismissed the share sheet */
+        }
+      }
     } catch (e) {
       Alert.alert(
         "Couldn't create link",

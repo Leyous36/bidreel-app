@@ -173,7 +173,20 @@ export default function BidDetailScreen() {
       await Clipboard.setStringAsync(url);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       track("proposal_shared");
-      await Share.share({ message: url, url });
+      if (Platform.OS === "web") {
+        Alert.alert(
+          "Link created & copied",
+          "Paste it into an email or text to your client.",
+        );
+      } else {
+        // The native share sheet is the confirmation; a dismissed or absent
+        // sheet must not read as a failure — the link is already created + copied.
+        try {
+          await Share.share({ message: url, url });
+        } catch {
+          /* user dismissed the share sheet */
+        }
+      }
     } catch (e) {
       Alert.alert(
         "Couldn't create link",

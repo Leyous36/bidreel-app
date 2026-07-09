@@ -363,6 +363,15 @@ export function Row({ children, onPress, active, style }: RowProps) {
   );
 }
 
+/** First-load placeholder so list screens don't flash an empty state. */
+export function LoadingState() {
+  return (
+    <View style={styles.empty}>
+      <ActivityIndicator size="small" color={Colors.textSecondary} />
+    </View>
+  );
+}
+
 /** One sentence and one action. Never illustrations. */
 export function EmptyState({
   message,
