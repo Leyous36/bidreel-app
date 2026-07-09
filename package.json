@@ -13,6 +13,7 @@
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo/vector-icons": "^15.0.3",
+    "@revenuecat/purchases-js": "^1.47.1",
     "@supabase/supabase-js": "^2.49.0",
     "base64-arraybuffer": "^1.0.2",
     "expo": "^54.0.35",

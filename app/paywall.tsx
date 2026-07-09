@@ -191,8 +191,9 @@ export default function PaywallScreen() {
           <LegalLink label="Privacy Policy" url="https://bidreel.io/privacy.html" />
         </View>
         <Text style={text.muted}>
-          Subscriptions renew automatically until cancelled in your App Store
-          settings.
+          {Platform.OS === "web"
+            ? "Subscriptions renew automatically. Cancel anytime from your account."
+            : "Subscriptions renew automatically until cancelled in your App Store settings."}
         </Text>
       </ScrollView>
     </Screen>
