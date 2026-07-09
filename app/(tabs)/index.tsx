@@ -6,10 +6,15 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  Platform,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  ChevronRight,
+  CircleCheck,
+  Clock,
+  Eye,
+  Send,
+} from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { Bid, proposalValue } from "@/lib/types";
@@ -18,22 +23,23 @@ import { Sparkline } from "@/components/Sparkline";
 import { FadeInView } from "@/components/FadeInView";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ShareButton } from "@/components/ShareButton";
-import { Screen } from "@/components/ui";
+import {
+  Button,
+  Card,
+  EmptyState,
+  PageHeader,
+  Row,
+  Screen,
+  focusRing,
+  text,
+  useInteractive,
+} from "@/components/ui";
 import { ErrorBanner } from "@/components/ErrorBanner";
-import { Colors, Radius, Spacing } from "@/constants/Colors";
+import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
 
 type Range = "month" | "all";
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
-
-// On web, animate transform/background smoothly on hover; ignored on native.
-const webTransition =
-  Platform.OS === "web"
-    ? ({
-        transitionDuration: "150ms",
-        transitionProperty: "transform, background-color, border-color",
-      } as any)
-    : null;
 
 function amountOf(b: Bid): number {
   return proposalValue(b.proposal) || b.budget || 0;
@@ -60,12 +66,6 @@ function shortMoney(n: number): string {
   return n >= 1000 ? `$${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : `$${n}`;
 }
 
-function initials(name: string): string {
-  const parts = (name || "").trim().split(/\s+/);
-  const s = (parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "");
-  return s.toUpperCase() || "?";
-}
-
 const NUDGE_SUB: Record<string, string> = {
   accepted: "Send the payment link to lock it in",
   opened: "They're interested — reply while it's warm",
@@ -75,6 +75,33 @@ const NUDGE_SUB: Record<string, string> = {
 
 /** Proposals with no movement in this many days count as "gone quiet". */
 const COLD_DAYS = 3;
+
+function SegmentButton({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const { hovered, focused, handlers } = useInteractive();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      {...handlers}
+      style={[
+        styles.segBtn,
+        hovered && !active && { backgroundColor: Colors.surfaceHover },
+        active && styles.segBtnOn,
+        focusRing(focused),
+      ]}
+    >
+      <Text style={[styles.segTxt, active && styles.segTxtOn]}>{label}</Text>
+    </Pressable>
+  );
+}
 
 export default function DashboardScreen() {
   const { session, profile } = useAuth();
@@ -150,8 +177,7 @@ export default function DashboardScreen() {
   const nudges = [
     {
       key: "accepted",
-      icon: "checkmark-circle" as const,
-      color: Colors.green,
+      icon: CircleCheck,
       items: bids.filter(
         (b) => b.accepted_at && b.deposit_status !== "paid" && b.status !== "lost",
       ),
@@ -159,8 +185,7 @@ export default function DashboardScreen() {
     },
     {
       key: "opened",
-      icon: "eye" as const,
-      color: Colors.blue,
+      icon: Eye,
       items: bids.filter(
         (b) =>
           b.first_viewed_at &&
@@ -172,8 +197,7 @@ export default function DashboardScreen() {
     },
     {
       key: "sent",
-      icon: "paper-plane" as const,
-      color: Colors.blue,
+      icon: Send,
       items: bids.filter(
         (b) => b.share_token && !b.first_viewed_at && b.status === "sent",
       ),
@@ -181,8 +205,7 @@ export default function DashboardScreen() {
     },
     {
       key: "stale",
-      icon: "alarm" as const,
-      color: Colors.accent,
+      icon: Clock,
       items: bids
         .filter(
           (b) =>
@@ -199,16 +222,15 @@ export default function DashboardScreen() {
     },
   ].filter((n) => n.items.length > 0);
 
-  const today = new Date()
-    .toLocaleDateString(undefined, {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-    })
-    .toUpperCase();
+  const today = new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
     <Screen>
+      <PageHeader title="Dashboard" />
       {loadError ? <ErrorBanner onRetry={load} /> : null}
       <FlatList
         data={bids.slice(0, 10)}
@@ -217,7 +239,7 @@ export default function DashboardScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            tintColor={Colors.accent}
+            tintColor={Colors.textSecondary}
             onRefresh={async () => {
               setRefreshing(true);
               await load();
@@ -228,42 +250,36 @@ export default function DashboardScreen() {
         ListHeaderComponent={
           <FadeInView style={styles.header}>
             <View style={styles.topRow}>
-              <Text style={styles.date}>{today}</Text>
+              <View style={{ gap: Spacing.xxs }}>
+                <Text style={text.heading}>
+                  {profile?.company_name ?? "Your studio"}
+                </Text>
+                <Text style={text.muted}>{today}</Text>
+              </View>
               <View style={styles.seg}>
                 {(["month", "all"] as const).map((r) => (
-                  <Pressable
+                  <SegmentButton
                     key={r}
+                    label={r === "month" ? "This month" : "All time"}
+                    active={range === r}
                     onPress={() => setRange(r)}
-                    style={[styles.segBtn, range === r && styles.segBtnOn]}
-                  >
-                    <Text style={[styles.segTxt, range === r && styles.segTxtOn]}>
-                      {r === "month" ? "This month" : "All time"}
-                    </Text>
-                  </Pressable>
+                  />
                 ))}
               </View>
             </View>
-
-            <Text style={styles.greeting}>
-              {profile?.company_name ?? "Your studio"}
-            </Text>
 
             <View style={styles.metrics}>
               <StatCard
                 label="Total bids"
                 value={String(scoped.length)}
-                icon="documents"
-                tint={Colors.blue}
                 delta={newThisWeek > 0 ? `+${newThisWeek} this wk` : null}
               >
-                <Sparkline data={bidsSeries} color={Colors.blue} />
+                <Sparkline data={bidsSeries} />
               </StatCard>
 
               <StatCard
                 label="Win rate"
                 value={decided.length > 0 ? `${winPct}%` : "—"}
-                icon="trophy"
-                tint={Colors.green}
                 footnote={
                   decided.length > 0
                     ? `${won.length} of ${decided.length} decided`
@@ -271,30 +287,21 @@ export default function DashboardScreen() {
                 }
               >
                 <View style={styles.meterTrack}>
-                  <View
-                    style={[
-                      styles.meterFill,
-                      { width: `${winPct}%`, backgroundColor: Colors.green },
-                    ]}
-                  />
+                  <View style={[styles.meterFill, { width: `${winPct}%` }]} />
                 </View>
               </StatCard>
 
               <StatCard
                 label="Revenue won"
                 value={`$${revenueWon.toLocaleString()}`}
-                icon="cash"
-                tint={Colors.accent}
                 delta={revThisWeek > 0 ? `+${shortMoney(revThisWeek)}` : null}
               >
-                <Sparkline data={revSeries} color={Colors.accent} />
+                <Sparkline data={revSeries} />
               </StatCard>
 
               <StatCard
                 label="Pipeline"
                 value={`$${pipeline.toLocaleString()}`}
-                icon="trending-up"
-                tint={Colors.purple}
                 footnote={`${openBids.length} open`}
               >
                 <Sparkline
@@ -303,126 +310,92 @@ export default function DashboardScreen() {
                       ? openBids.slice(0, 7).map(amountOf).reverse()
                       : [0]
                   }
-                  color={Colors.purple}
                 />
               </StatCard>
             </View>
 
             {stageTotal > 0 && (
-              <View style={styles.panel}>
+              <Card style={styles.panel}>
                 <View style={styles.panelHead}>
-                  <Text style={styles.panelLabel}>Pipeline by stage</Text>
-                  <Text style={styles.panelMuted}>
+                  <Text style={text.label}>Pipeline by stage</Text>
+                  <Text style={text.muted}>
                     {stageTotal} bid{stageTotal === 1 ? "" : "s"}
                   </Text>
-                </View>
-                <View style={styles.stageBar}>
-                  {stages.map((s) => (
-                    <View
-                      key={s.key}
-                      style={{ flex: s.n, backgroundColor: s.color }}
-                    />
-                  ))}
                 </View>
                 <View style={styles.legend}>
                   {stages.map((s) => (
                     <View key={s.key} style={styles.legendItem}>
                       <View style={[styles.legendDot, { backgroundColor: s.color }]} />
-                      <Text style={styles.legendTxt}>
+                      <Text style={text.label}>
                         {s.label} {s.n}
                       </Text>
                     </View>
                   ))}
                 </View>
-              </View>
+              </Card>
             )}
 
             {nudges.length > 0 && (
-              <View style={styles.nudges}>
-                <Text style={styles.sectionTitle}>Needs attention</Text>
-                {nudges.map((n) => (
-                  <Pressable
-                    key={n.key}
-                    style={({ hovered, pressed }: any) => [
-                      styles.nudgeRow,
-                      webTransition,
-                      {
-                        backgroundColor: n.color + "14",
-                        borderColor: n.color + "40",
-                      },
-                      hovered && {
-                        transform: [{ translateX: 4 }],
-                        backgroundColor: n.color + "22",
-                      },
-                      pressed && { transform: [{ scale: 0.99 }] },
-                    ]}
-                    onPress={() => router.push(`/bid/${n.items[0].id}`)}
-                  >
-                    <View
-                      style={[styles.nudgeIcon, { backgroundColor: n.color + "26" }]}
-                    >
-                      <Ionicons name={n.icon} size={17} color={n.color} />
-                    </View>
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <Text style={styles.nudgeText}>{n.label(n.items.length)}</Text>
-                      <Text style={styles.nudgeSub}>{NUDGE_SUB[n.key]}</Text>
-                    </View>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={16}
-                      color={Colors.textMuted}
-                    />
-                  </Pressable>
-                ))}
+              <View style={styles.section}>
+                <Text style={text.label}>Needs attention</Text>
+                <View>
+                  {nudges.map((n) => {
+                    const Icon = n.icon;
+                    return (
+                      <Row
+                        key={n.key}
+                        onPress={() => router.push(`/bid/${n.items[0].id}`)}
+                        style={styles.nudgeRow}
+                      >
+                        <Icon
+                          size={16}
+                          color={Colors.textSecondary}
+                          strokeWidth={1.75}
+                        />
+                        <View style={{ flex: 1, gap: Spacing.xxs }}>
+                          <Text style={text.ui}>{n.label(n.items.length)}</Text>
+                          <Text style={text.muted}>{NUDGE_SUB[n.key]}</Text>
+                        </View>
+                        <ChevronRight
+                          size={16}
+                          color={Colors.textMuted}
+                          strokeWidth={1.75}
+                        />
+                      </Row>
+                    );
+                  })}
+                </View>
               </View>
             )}
 
             <View style={styles.recentHead}>
-              <Text style={styles.sectionTitle}>Recent bids</Text>
-              <Pressable onPress={() => router.push("/bids")}>
-                <Text style={styles.viewAll}>View all</Text>
-              </Pressable>
+              <Text style={text.label}>Recent bids</Text>
+              <Button
+                title="View all"
+                variant="ghost"
+                onPress={() => router.push("/bids")}
+              />
             </View>
           </FadeInView>
         }
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No bids yet</Text>
-            <Text style={styles.emptyText}>
-              Tap New Bid to generate your first proposal in under 60 seconds.
-            </Text>
-          </View>
+          <EmptyState message="No bids yet — tap New Bid to generate your first proposal in under 60 seconds." />
         }
-        renderItem={({ item, index }) => {
-          const tint = Colors.status[item.status] ?? Colors.textMuted;
-          return (
-            <FadeInView delay={Math.min(index, 6) * 55}>
-            <Pressable
-              style={({ hovered, pressed }: any) => [
-                styles.bidRow,
-                webTransition,
-                hovered && styles.bidRowHover,
-                pressed && { opacity: 0.85, transform: [{ scale: 0.995 }] },
-              ]}
+        renderItem={({ item, index }) => (
+          <FadeInView delay={Math.min(index, 6) * 55}>
+            <Row
               onPress={() => router.push(`/bid/${item.id}`)}
+              style={styles.bidRow}
             >
-              <View style={[styles.avatar, { backgroundColor: tint + "22" }]}>
-                <Text style={[styles.avatarTxt, { color: tint }]}>
-                  {initials(item.client_name)}
-                </Text>
-              </View>
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.bidClient}>{item.client_name}</Text>
-                <Text style={styles.bidDate}>
-                  {new Date(item.created_at).toLocaleDateString()}
-                </Text>
-              </View>
-              <View style={{ alignItems: "flex-end", gap: 6 }}>
-                <Text style={styles.bidAmount}>
-                  ${amountOf(item).toLocaleString()}
-                </Text>
-                <StatusBadge status={item.status} />
-              </View>
+              <Text style={[text.ui, styles.bidClient]} numberOfLines={1}>
+                {item.client_name}
+              </Text>
+              <Text style={text.muted}>
+                {new Date(item.created_at).toLocaleDateString()}
+              </Text>
+              <View style={{ flex: 1 }} />
+              <Text style={text.ui}>${amountOf(item).toLocaleString()}</Text>
+              <StatusBadge status={item.status} />
               <ShareButton
                 bid={item}
                 onShared={(patch) =>
@@ -431,141 +404,85 @@ export default function DashboardScreen() {
                   )
                 }
               />
-            </Pressable>
-            </FadeInView>
-          );
-        }}
+            </Row>
+          </FadeInView>
+        )}
       />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { padding: Spacing.md, gap: Spacing.sm },
-  header: { gap: Spacing.md, marginBottom: Spacing.sm },
+  list: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
+  },
+  header: { gap: Spacing.lg, marginBottom: Spacing.xs },
   topRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: Spacing.sm,
   },
-  date: { color: Colors.textMuted, fontSize: 12, letterSpacing: 0.5 },
   seg: {
     flexDirection: "row",
     backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.sm,
-    padding: 3,
+    borderRadius: Radius.md,
+    padding: Spacing.xxs,
+    gap: Spacing.xxs,
   },
-  segBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-  segBtnOn: { backgroundColor: Colors.accent },
-  segTxt: { color: Colors.textSecondary, fontSize: 12, fontWeight: "600" },
-  segTxtOn: { color: "#1A1405" },
-  greeting: { color: Colors.text, fontSize: 24, fontWeight: "800", marginTop: -4 },
+  segBtn: {
+    height: 28,
+    paddingHorizontal: 12,
+    borderRadius: Radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  segBtnOn: { backgroundColor: Colors.accentMuted },
+  segTxt: {
+    fontFamily: Fonts.medium,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+    letterSpacing: Type.trackUi,
+    color: Colors.textSecondary,
+  },
+  segTxtOn: { color: Colors.text },
   metrics: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
 
   meterTrack: {
-    height: 6,
-    borderRadius: 3,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: Colors.border,
     overflow: "hidden",
-    marginTop: 4,
+    marginTop: Spacing.xs,
   },
-  meterFill: { height: 6, borderRadius: 3 },
+  meterFill: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.textMuted,
+  },
 
-  panel: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    gap: 11,
-  },
+  panel: { gap: Spacing.md },
   panelHead: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  panelLabel: { color: Colors.textSecondary, fontSize: 12.5 },
-  panelMuted: { color: Colors.textMuted, fontSize: 12.5 },
-  stageBar: {
-    flexDirection: "row",
-    height: 9,
-    borderRadius: 5,
-    overflow: "hidden",
-    gap: 3,
-  },
-  legend: { flexDirection: "row", flexWrap: "wrap", gap: 14 },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
-  legendDot: { width: 9, height: 9, borderRadius: 2 },
-  legendTxt: { color: Colors.textSecondary, fontSize: 11.5 },
+  legend: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.md },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
+  legendDot: { width: 8, height: 8, borderRadius: Radius.pill },
 
-  nudges: { gap: Spacing.sm },
-  nudgeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    borderWidth: 1,
-    borderRadius: Radius.md,
-    padding: 13,
-  },
-  nudgeIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  nudgeText: { color: Colors.text, fontSize: 14, fontWeight: "700" },
-  nudgeSub: { color: Colors.textSecondary, fontSize: 11.5 },
+  section: { gap: Spacing.sm },
+  nudgeRow: { paddingVertical: Spacing.sm, marginHorizontal: -12 },
 
-  sectionTitle: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
   recentHead: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    minHeight: 28,
   },
-  viewAll: { color: Colors.accent, fontSize: 13, fontWeight: "600" },
 
-  bidRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-  },
-  bidRowHover: {
-    transform: [{ translateX: 4 }],
-    backgroundColor: Colors.surfaceRaised,
-    borderColor: Colors.border,
-  },
-  avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarTxt: { fontSize: 13, fontWeight: "700" },
-  bidClient: { color: Colors.text, fontSize: 16, fontWeight: "700" },
-  bidDate: { color: Colors.textMuted, fontSize: 12 },
-  bidAmount: { color: Colors.text, fontSize: 15, fontWeight: "700" },
-
-  empty: { alignItems: "center", padding: Spacing.xl, gap: 8 },
-  emptyTitle: { color: Colors.text, fontSize: 18, fontWeight: "700" },
-  emptyText: {
-    color: Colors.textSecondary,
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-  },
+  bidRow: { marginHorizontal: -12 },
+  bidClient: { flexShrink: 1 },
 });

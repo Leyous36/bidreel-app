@@ -8,13 +8,13 @@ import {
   ActivityIndicator,
   Share,
   Modal,
-  TextInput,
+  Platform,
 } from "react-native";
 import { Alert } from "@/lib/dialog";
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import { Ionicons } from "@expo/vector-icons";
+import { ArrowLeft } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { proposalToText, shareProposal, generateFollowup } from "@/lib/ai";
@@ -24,8 +24,27 @@ import { track } from "@/lib/analytics";
 import { Bid, BidEvent, BidStatus, STATUS_LABELS } from "@/lib/types";
 import { ProposalView } from "@/components/ProposalView";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
-import { Screen } from "@/components/ui";
-import { Colors, Radius, Spacing } from "@/constants/Colors";
+import {
+  Screen,
+  Button,
+  IconButton,
+  Field,
+  Row,
+  EmptyState,
+  OverflowMenu,
+  MenuItem,
+  useInteractive,
+  focusRing,
+  text,
+} from "@/components/ui";
+import {
+  Colors,
+  Fonts,
+  Radius,
+  Shadow,
+  Spacing,
+  Type,
+} from "@/constants/Colors";
 
 const STATUS_OPTIONS: BidStatus[] = [
   "draft",
@@ -42,6 +61,36 @@ const STATUS_OPTIONS: BidStatus[] = [
 // for copy/email when we already hold the token.
 const PUBLIC_BASE =
   process.env.EXPO_PUBLIC_SHARE_BASE_URL ?? "https://bidreel.io/p/";
+
+function StatusChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const { hovered, focused, handlers } = useInteractive();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      {...handlers}
+      style={({ pressed }) => [
+        styles.statusChip,
+        active
+          ? { backgroundColor: Colors.accentMuted }
+          : (hovered || pressed) && { backgroundColor: Colors.surfaceHover },
+        focusRing(focused),
+      ]}
+    >
+      <Text style={[styles.statusChipText, active && { color: Colors.text }]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
 
 export default function BidDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -275,11 +324,24 @@ export default function BidDetailScreen() {
     ]);
   }
 
+  const topBar =
+    Platform.OS === "web" ? (
+      <View style={styles.topBar}>
+        <IconButton label="Back" onPress={() => router.back()}>
+          <ArrowLeft size={16} color={Colors.textSecondary} strokeWidth={1.75} />
+        </IconButton>
+        <Text style={text.heading} numberOfLines={1}>
+          {bid?.client_name ?? "Proposal"}
+        </Text>
+      </View>
+    ) : null;
+
   if (loading) {
     return (
       <Screen>
+        {topBar}
         <View style={styles.center}>
-          <ActivityIndicator color={Colors.accent} size="large" />
+          <ActivityIndicator color={Colors.textSecondary} size="large" />
         </View>
       </Screen>
     );
@@ -288,89 +350,89 @@ export default function BidDetailScreen() {
   if (!bid) {
     return (
       <Screen>
+        {topBar}
         <View style={styles.center}>
-          <Ionicons
-            name="alert-circle-outline"
-            size={40}
-            color={Colors.textMuted}
-          />
-          <Text style={styles.errorTitle}>Couldn&apos;t load this proposal</Text>
+          <Text style={text.title}>Couldn&apos;t load this proposal</Text>
           <Text style={styles.errorBody}>
             {loadError
               ? "It may have been deleted, or your connection dropped."
               : "Something went wrong."}
           </Text>
           <View style={styles.errorButtons}>
-            <Pressable
-              style={styles.errorRetry}
+            <Button
+              title="Retry"
               onPress={() => {
                 setLoading(true);
                 load();
               }}
-            >
-              <Text style={styles.errorRetryText}>Retry</Text>
-            </Pressable>
-            <Pressable style={styles.errorBack} onPress={() => router.back()}>
-              <Text style={styles.errorBackText}>Go back</Text>
-            </Pressable>
+            />
+            <Button title="Go back" variant="ghost" onPress={() => router.back()} />
           </View>
         </View>
       </Screen>
     );
   }
 
+  const menuItems: MenuItem[] = [
+    ...(bid.share_token ? [{ label: "Copy link", onPress: copyLink }] : []),
+    { label: "Copy text", onPress: copyProposal },
+    { label: "Export PDF", onPress: exportPdf },
+    { label: "Delete", onPress: deleteBid, danger: true },
+  ];
+
   return (
     <Screen>
+      {topBar}
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.statusRow}>
           {STATUS_OPTIONS.map((s) => (
-            <Pressable
+            <StatusChip
               key={s}
+              label={STATUS_LABELS[s]}
+              active={bid.status === s}
               onPress={() => setStatus(s)}
-              style={[
-                styles.statusChip,
-                bid.status === s && {
-                  backgroundColor: Colors.status[s] + "33",
-                  borderColor: Colors.status[s],
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.statusChipText,
-                  bid.status === s && { color: Colors.status[s] },
-                ]}
-              >
-                {STATUS_LABELS[s]}
-              </Text>
-            </Pressable>
+            />
           ))}
         </View>
 
-        {bid.proposal ? (
-          <ProposalView proposal={bid.proposal} />
-        ) : (
-          <Text style={styles.noProposal}>
-            No proposal was generated for this bid.
-          </Text>
-        )}
+        <View style={styles.actionsRow}>
+          <Button
+            title={bid.share_token ? "Share link" : "Share proposal"}
+            onPress={shareLink}
+            loading={sharing}
+          />
+          <Button
+            title="Email to client"
+            variant="secondary"
+            onPress={() => setEmailVisible(true)}
+          />
+          {["sent", "viewed", "pending"].includes(bid.status) ? (
+            <Button
+              title="Draft follow-up"
+              variant="secondary"
+              onPress={draftFollowup}
+              disabled={draftingFollowup}
+            />
+          ) : null}
+          <View style={styles.actionsSpacer} />
+          {exporting ? <Text style={text.muted}>Exporting PDF…</Text> : null}
+          <OverflowMenu items={menuItems} />
+        </View>
 
         {bid.share_token ? (
-          <Pressable style={styles.linkBanner} onPress={copyLink}>
-            <Ionicons
-              name={
-                bid.deposit_status === "paid"
-                  ? "cash"
-                  : bid.accepted_at
-                    ? "checkmark-circle"
-                    : "link"
-              }
-              size={16}
-              color={
-                bid.deposit_status === "paid" || bid.accepted_at
-                  ? Colors.green
-                  : Colors.accent
-              }
+          <Row onPress={copyLink} style={styles.linkRow}>
+            <View
+              style={[
+                styles.linkDot,
+                {
+                  backgroundColor:
+                    bid.deposit_status === "paid" || bid.accepted_at
+                      ? Colors.green
+                      : bid.first_viewed_at
+                        ? Colors.status.viewed
+                        : Colors.status.sent,
+                },
+              ]}
             />
             <Text style={styles.linkText} numberOfLines={1}>
               {bid.deposit_status === "paid"
@@ -383,72 +445,14 @@ export default function BidDetailScreen() {
               bidreel.io/p/{String(bid.share_token).slice(0, 8)}…
             </Text>
             <Text style={styles.linkCopy}>Copy</Text>
-          </Pressable>
+          </Row>
         ) : null}
 
-        <View style={styles.actionsCol}>
-          <Pressable
-            style={[styles.actionButton, sharing && { opacity: 0.7 }]}
-            onPress={shareLink}
-            disabled={sharing}
-          >
-            {sharing ? (
-              <ActivityIndicator color="#1A1405" />
-            ) : (
-              <>
-                <Ionicons name="share-outline" size={18} color="#1A1405" />
-                <Text style={styles.actionButtonText}>
-                  {bid.share_token ? "Share Link" : "Share Proposal"}
-                </Text>
-              </>
-            )}
-          </Pressable>
-
-          {["sent", "viewed", "pending"].includes(bid.status) ? (
-            <Pressable
-              style={styles.followupButton}
-              onPress={draftFollowup}
-              disabled={draftingFollowup}
-            >
-              <Ionicons name="sparkles" size={18} color={Colors.accent} />
-              <Text style={styles.followupButtonText}>Draft Follow-up</Text>
-            </Pressable>
-          ) : null}
-
-          <View style={styles.actions}>
-            <Pressable
-              style={styles.secondaryButton}
-              onPress={() => setEmailVisible(true)}
-            >
-              <Ionicons name="mail" size={18} color={Colors.text} />
-              <Text style={styles.secondaryButtonText}>Email to Client</Text>
-            </Pressable>
-            <Pressable
-              style={styles.secondaryButton}
-              onPress={exportPdf}
-              disabled={exporting}
-            >
-              {exporting ? (
-                <ActivityIndicator color={Colors.text} size="small" />
-              ) : (
-                <>
-                  <Ionicons name="document-text" size={18} color={Colors.text} />
-                  <Text style={styles.secondaryButtonText}>Export PDF</Text>
-                </>
-              )}
-            </Pressable>
-          </View>
-
-          <View style={styles.actions}>
-            <Pressable style={styles.secondaryButton} onPress={copyProposal}>
-              <Ionicons name="copy" size={18} color={Colors.text} />
-              <Text style={styles.secondaryButtonText}>Copy Text</Text>
-            </Pressable>
-            <Pressable style={styles.deleteButton} onPress={deleteBid}>
-              <Ionicons name="trash" size={18} color={Colors.red} />
-            </Pressable>
-          </View>
-        </View>
+        {bid.proposal ? (
+          <ProposalView proposal={bid.proposal} />
+        ) : (
+          <EmptyState message="No proposal was generated for this bid." />
+        )}
 
         {bid.share_token ? <ActivityTimeline events={events} /> : null}
       </ScrollView>
@@ -461,15 +465,14 @@ export default function BidDetailScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Email to client</Text>
+            <Text style={text.title}>Email to client</Text>
             <Text style={styles.modalSub}>
               Send the {bid.client_name} proposal straight to their inbox.
               Replies come back to you.
             </Text>
-            <TextInput
-              style={styles.modalInput}
+            <Field
+              label="Client email"
               placeholder="client@email.com"
-              placeholderTextColor={Colors.textMuted}
               value={clientEmail}
               onChangeText={setClientEmail}
               autoCapitalize="none"
@@ -479,24 +482,13 @@ export default function BidDetailScreen() {
               editable={!sendingEmail}
             />
             <View style={styles.modalActions}>
-              <Pressable
-                style={styles.modalCancel}
+              <Button
+                title="Cancel"
+                variant="ghost"
                 onPress={() => setEmailVisible(false)}
                 disabled={sendingEmail}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={styles.modalSend}
-                onPress={sendEmail}
-                disabled={sendingEmail}
-              >
-                {sendingEmail ? (
-                  <ActivityIndicator color="#1A1405" size="small" />
-                ) : (
-                  <Text style={styles.modalSendText}>Send</Text>
-                )}
-              </Pressable>
+              />
+              <Button title="Send" onPress={sendEmail} loading={sendingEmail} />
             </View>
           </View>
         </View>
@@ -510,10 +502,10 @@ export default function BidDetailScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Follow-up draft</Text>
+            <Text style={text.title}>Follow-up draft</Text>
             {draftingFollowup ? (
               <View style={styles.followupLoading}>
-                <ActivityIndicator color={Colors.accent} />
+                <ActivityIndicator color={Colors.textSecondary} />
                 <Text style={styles.modalSub}>Writing a follow-up…</Text>
               </View>
             ) : (
@@ -522,19 +514,16 @@ export default function BidDetailScreen() {
               </ScrollView>
             )}
             <View style={styles.modalActions}>
-              <Pressable
-                style={styles.modalCancel}
+              <Button
+                title="Close"
+                variant="ghost"
                 onPress={() => setFollowupVisible(false)}
-              >
-                <Text style={styles.modalCancelText}>Close</Text>
-              </Pressable>
-              <Pressable
-                style={styles.modalSend}
+              />
+              <Button
+                title="Copy"
                 onPress={copyFollowup}
                 disabled={draftingFollowup || !followupText}
-              >
-                <Text style={styles.modalSendText}>Copy</Text>
-              </Pressable>
+              />
             </View>
           </View>
         </View>
@@ -544,113 +533,75 @@ export default function BidDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    minHeight: 48,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+  },
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: Spacing.sm,
     padding: Spacing.lg,
   },
-  errorTitle: { color: Colors.text, fontSize: 17, fontWeight: "700" },
   errorBody: {
+    fontFamily: Fonts.regular,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
     color: Colors.textSecondary,
-    fontSize: 14,
     textAlign: "center",
   },
-  errorButtons: { flexDirection: "row", gap: Spacing.sm, marginTop: 6 },
-  errorRetry: {
-    backgroundColor: Colors.accent,
-    borderRadius: Radius.md,
-    paddingVertical: 11,
-    paddingHorizontal: 22,
+  errorButtons: { flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.sm },
+  container: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xxl,
+    gap: Spacing.lg,
   },
-  errorRetryText: { color: "#1A1405", fontSize: 15, fontWeight: "700" },
-  errorBack: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    paddingVertical: 11,
-    paddingHorizontal: 22,
-  },
-  errorBackText: { color: Colors.text, fontSize: 15, fontWeight: "600" },
-  container: { padding: Spacing.md, gap: Spacing.lg, paddingBottom: 48 },
-  statusRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
+  statusRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.xs },
   statusChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
+    height: 28,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: Radius.md,
+    alignItems: "center",
+    justifyContent: "center",
   },
   statusChipText: {
-    color: Colors.textMuted,
-    fontSize: 12,
-    fontWeight: "600",
+    fontFamily: Fonts.medium,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+    letterSpacing: Type.trackUi,
+    color: Colors.textSecondary,
   },
-  noProposal: { color: Colors.textSecondary, textAlign: "center" },
-  linkBanner: {
+  actionsRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    flexWrap: "wrap",
+    gap: Spacing.sm,
   },
-  linkText: { flex: 1, color: Colors.textSecondary, fontSize: 13, fontWeight: "600" },
-  linkCopy: { color: Colors.accent, fontSize: 13, fontWeight: "700" },
-  actionsCol: { gap: Spacing.sm },
-  actions: { flexDirection: "row", gap: Spacing.sm },
-  secondaryButton: {
+  actionsSpacer: { flex: 1 },
+  linkRow: { backgroundColor: Colors.surface },
+  linkDot: { width: 8, height: 8, borderRadius: Radius.pill },
+  linkText: {
     flex: 1,
-    flexDirection: "row",
-    gap: 8,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
+    fontFamily: Fonts.medium,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+    color: Colors.textSecondary,
   },
-  secondaryButtonText: { color: Colors.text, fontSize: 15, fontWeight: "700" },
-  actionButton: {
-    flex: 1,
-    flexDirection: "row",
-    gap: 8,
-    backgroundColor: Colors.accent,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
+  linkCopy: {
+    fontFamily: Fonts.medium,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+    color: Colors.textSecondary,
   },
-  actionButtonText: { color: "#1A1405", fontSize: 16, fontWeight: "700" },
-  deleteButton: {
-    width: 52,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.red,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  followupButton: {
-    flexDirection: "row",
-    gap: 8,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.accent + "66",
-    backgroundColor: Colors.surface,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  followupButtonText: { color: Colors.accent, fontSize: 15, fontWeight: "700" },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "#000A",
+    backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
     justifyContent: "center",
     padding: Spacing.md,
@@ -658,46 +609,32 @@ const styles = StyleSheet.create({
   modalCard: {
     width: "100%",
     maxWidth: 440,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.surfaceRaised,
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: Radius.lg,
     padding: Spacing.md,
     gap: Spacing.sm,
+    ...Shadow.overlay,
   },
-  modalTitle: { color: Colors.text, fontSize: 17, fontWeight: "800" },
-  modalSub: { color: Colors.textSecondary, fontSize: 13, lineHeight: 18 },
-  modalInput: {
-    backgroundColor: Colors.surfaceRaised,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+  modalSub: {
+    fontFamily: Fonts.regular,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+    color: Colors.textSecondary,
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  followupLoading: { alignItems: "center", gap: Spacing.sm, paddingVertical: Spacing.lg },
+  followupScroll: { maxHeight: 300, marginVertical: Spacing.xs },
+  followupText: {
+    fontFamily: Fonts.regular,
+    fontSize: Type.body,
+    lineHeight: Math.round(Type.body * 1.5),
     color: Colors.text,
-    fontSize: 15,
   },
-  modalActions: { flexDirection: "row", gap: Spacing.sm, marginTop: 4 },
-  modalCancel: {
-    flex: 1,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingVertical: 13,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalCancelText: { color: Colors.textSecondary, fontSize: 15, fontWeight: "600" },
-  modalSend: {
-    flex: 1,
-    backgroundColor: Colors.accent,
-    borderRadius: Radius.md,
-    paddingVertical: 13,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalSendText: { color: "#1A1405", fontSize: 15, fontWeight: "700" },
-  followupLoading: { alignItems: "center", gap: 10, paddingVertical: 28 },
-  followupScroll: { maxHeight: 300, marginVertical: 4 },
-  followupText: { color: Colors.text, fontSize: 14, lineHeight: 21 },
 });

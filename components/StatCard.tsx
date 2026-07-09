@@ -1,14 +1,16 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Colors, Radius, Spacing } from "@/constants/Colors";
+import { View, Text, StyleSheet, Pressable } from "react-native";
+import { focusRing, useInteractive } from "@/components/ui";
+import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
 
 interface Props {
   label: string;
   value: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  /** Accepted for caller compatibility; decorative icon badges are gone. */
+  icon?: string;
+  /** Accepted for caller compatibility; cards are grayscale now. */
   tint?: string;
-  /** Small top-right trend badge, e.g. "+3 this wk". Hidden when null. */
+  /** Small top-right trend text, e.g. "+3 this wk". Hidden when null. */
   delta?: string | null;
   deltaPositive?: boolean;
   /** Muted line under the value. */
@@ -18,48 +20,29 @@ interface Props {
   onPress?: () => void;
 }
 
-// On web, animate transform/border smoothly; on native these keys are ignored.
-const webTransition =
-  Platform.OS === "web"
-    ? ({
-        transitionDuration: "160ms",
-        transitionProperty: "transform, border-color",
-      } as any)
-    : null;
-
 /**
- * Enhanced KPI card: icon + label, optional trend delta, big value, an optional
- * footnote, and a bottom visual slot. Lifts on hover (web) and presses in on
- * tap (web + native).
+ * KPI card: 13px medium grayscale label, optional trend delta, 16px semibold
+ * value (weight, not size, does the hierarchy), optional footnote, and a
+ * bottom visual slot. Flat surface — no border, no shadow; hover lightens the
+ * background when pressable.
  */
 export function StatCard({
   label,
   value,
-  icon,
-  tint = Colors.accent,
   delta,
   deltaPositive = true,
   footnote,
   children,
   onPress,
 }: Props) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ hovered, pressed }: any) => [
-        styles.card,
-        webTransition,
-        hovered && styles.cardHover,
-        pressed && styles.cardPressed,
-      ]}
-    >
+  const { hovered, focused, handlers } = useInteractive();
+
+  const body = (
+    <>
       <View style={styles.head}>
-        <View style={styles.labelWrap}>
-          <View style={[styles.iconWrap, { backgroundColor: tint + "22" }]}>
-            <Ionicons name={icon} size={15} color={tint} />
-          </View>
-          <Text style={styles.label}>{label}</Text>
-        </View>
+        <Text style={styles.label} numberOfLines={1}>
+          {label}
+        </Text>
         {delta ? (
           <Text
             style={[
@@ -72,11 +55,30 @@ export function StatCard({
         ) : null}
       </View>
 
-      <Text style={styles.value} numberOfLines={1} adjustsFontSizeToFit>
+      <Text style={styles.value} numberOfLines={1}>
         {value}
       </Text>
       {footnote ? <Text style={styles.foot}>{footnote}</Text> : null}
-      {children ? <View style={{ marginTop: 10 }}>{children}</View> : null}
+      {children ? <View style={{ marginTop: Spacing.sm }}>{children}</View> : null}
+    </>
+  );
+
+  if (!onPress) {
+    return <View style={styles.card}>{body}</View>;
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      {...handlers}
+      style={({ pressed }) => [
+        styles.card,
+        (hovered || pressed) && { backgroundColor: Colors.surfaceHover },
+        focusRing(focused),
+      ]}
+    >
+      {body}
     </Pressable>
   );
 }
@@ -86,32 +88,41 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: "45%",
     backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderRadius: Radius.lg,
     padding: Spacing.md,
   },
-  cardHover: {
-    transform: [{ translateY: -3 }],
-    borderColor: Colors.accent + "66",
-  },
-  cardPressed: { transform: [{ scale: 0.985 }] },
   head: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
-  labelWrap: { flexDirection: "row", alignItems: "center", gap: 7, flexShrink: 1 },
-  iconWrap: {
-    width: 26,
-    height: 26,
-    borderRadius: 7,
-    alignItems: "center",
-    justifyContent: "center",
+  label: {
+    fontFamily: Fonts.medium,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+    letterSpacing: Type.trackUi,
+    color: Colors.textSecondary,
+    flexShrink: 1,
   },
-  label: { color: Colors.textSecondary, fontSize: 12.5, flexShrink: 1 },
-  delta: { fontSize: 11.5, fontWeight: "700" },
-  value: { color: Colors.text, fontSize: 24, fontWeight: "800" },
-  foot: { color: Colors.textMuted, fontSize: 11.5, marginTop: 4 },
+  delta: {
+    fontFamily: Fonts.medium,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+  },
+  value: {
+    fontFamily: Fonts.semibold,
+    fontSize: Type.heading,
+    lineHeight: Math.round(Type.heading * 1.4),
+    letterSpacing: Type.trackHeading,
+    color: Colors.text,
+  },
+  foot: {
+    fontFamily: Fonts.regular,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+    color: Colors.textMuted,
+    marginTop: Spacing.xs,
+  },
 });

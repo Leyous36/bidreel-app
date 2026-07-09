@@ -17,8 +17,8 @@ import { track } from "@/lib/analytics";
 import { TEMPLATES } from "@/lib/templates";
 import { FREE_PROPOSALS_PER_MONTH, Template } from "@/lib/types";
 import { TemplateCard } from "@/components/TemplateCard";
-import { Button, Field, Screen } from "@/components/ui";
-import { Colors, Spacing } from "@/constants/Colors";
+import { Button, Field, PageHeader, Screen, text } from "@/components/ui";
+import { Spacing } from "@/constants/Colors";
 
 export default function CreateBidScreen() {
   const { session, profile, refreshProfile } = useAuth();
@@ -113,14 +113,17 @@ export default function CreateBidScreen() {
   if (!template) {
     return (
       <Screen>
+        <PageHeader title="New bid" />
         <ScrollView contentContainerStyle={styles.container}>
-          <Text style={styles.title}>What are you bidding on?</Text>
-          {isFree && (
-            <Text style={styles.quota}>
-              Free plan: {Math.max(0, FREE_PROPOSALS_PER_MONTH - used)} of{" "}
-              {FREE_PROPOSALS_PER_MONTH} proposals left this month
-            </Text>
-          )}
+          <View style={styles.intro}>
+            <Text style={text.label}>Choose a template</Text>
+            {isFree && (
+              <Text style={text.muted}>
+                Free plan: {Math.max(0, FREE_PROPOSALS_PER_MONTH - used)} of{" "}
+                {FREE_PROPOSALS_PER_MONTH} proposals left this month
+              </Text>
+            )}
+          </View>
           <View style={styles.grid}>
             {TEMPLATES.map((t) => (
               <TemplateCard
@@ -138,15 +141,18 @@ export default function CreateBidScreen() {
 
   return (
     <Screen>
+      <PageHeader title="New bid" />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView contentContainerStyle={styles.container}>
-          <Text style={styles.title}>{template.name}</Text>
-          <Text style={styles.subtitle}>
-            Give me the basics — I&apos;ll write the full proposal.
-          </Text>
+          <View style={styles.intro}>
+            <Text style={text.title}>{template.name}</Text>
+            <Text style={text.muted}>
+              Give me the basics — I&apos;ll write the full proposal.
+            </Text>
+          </View>
           <Field
             label="Client name *"
             value={clientName}
@@ -180,7 +186,7 @@ export default function CreateBidScreen() {
           />
           <Button
             title="Back to templates"
-            variant="secondary"
+            variant="ghost"
             onPress={() => setTemplate(null)}
           />
         </ScrollView>
@@ -190,9 +196,11 @@ export default function CreateBidScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: Spacing.md, gap: Spacing.md },
-  title: { color: Colors.text, fontSize: 24, fontWeight: "800" },
-  subtitle: { color: Colors.textSecondary, fontSize: 14, marginTop: -8 },
-  quota: { color: Colors.accent, fontSize: 13, fontWeight: "600" },
+  container: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    gap: Spacing.md,
+  },
+  intro: { gap: Spacing.xs },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
 });

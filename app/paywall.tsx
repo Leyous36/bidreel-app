@@ -1,18 +1,27 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Platform, Pressable } from "react-native";
 import { Alert } from "@/lib/dialog";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Check, X } from "lucide-react-native";
 import { useAuth } from "@/lib/auth-context";
 import { purchaseProduct, restorePurchases } from "@/lib/revenue-cat";
 import { track } from "@/lib/analytics";
-import { Button, Screen } from "@/components/ui";
-import { Colors, Radius, Spacing } from "@/constants/Colors";
+import { Button, Card, IconButton, Screen, text, useInteractive, focusRing } from "@/components/ui";
+import { Colors, Fonts, Spacing, Type } from "@/constants/Colors";
+import type { SubscriptionTier } from "@/lib/types";
 
-const TIERS = [
+const TIERS: {
+  name: string;
+  tier: SubscriptionTier;
+  productId: string;
+  price: string;
+  features: string[];
+  highlight: boolean;
+}[] = [
   {
     name: "BidReel Pro",
+    tier: "pro",
     productId: "bidreel_pro_monthly",
     price: "$29.99/mo",
     features: [
@@ -27,6 +36,7 @@ const TIERS = [
   },
   {
     name: "BidReel Studio",
+    tier: "studio",
     productId: "bidreel_studio_monthly",
     price: "$79.99/mo",
     features: [
@@ -41,8 +51,24 @@ const TIERS = [
   },
 ];
 
+function LegalLink({ label, url }: { label: string; url: string }) {
+  const { hovered, focused, handlers } = useInteractive();
+  return (
+    <Pressable
+      accessibilityRole="link"
+      onPress={() => Linking.openURL(url)}
+      {...handlers}
+      style={focusRing(focused)}
+    >
+      <Text style={[styles.legalLink, hovered && { color: Colors.text }]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 export default function PaywallScreen() {
-  const { refreshProfile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -102,62 +128,69 @@ export default function PaywallScreen() {
 
   return (
     <Screen>
+      {Platform.OS === "web" && (
+        <View style={styles.topRow}>
+          <IconButton label="Close" onPress={() => router.back()}>
+            <X size={16} color={Colors.textSecondary} strokeWidth={1.75} />
+          </IconButton>
+          <Text style={text.heading}>Upgrade</Text>
+        </View>
+      )}
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Stop leaving money on the table</Text>
-        <Text style={styles.subtitle}>7-day free trial · cancel anytime</Text>
+        <Text style={text.muted}>7-day free trial · cancel anytime</Text>
 
-        {TIERS.map((tier) => (
-          <View
-            key={tier.name}
-            style={[styles.card, tier.highlight && styles.cardHighlight]}
-          >
-            {tier.highlight && (
-              <View style={styles.popularBadge}>
-                <Text style={styles.popularText}>MOST POPULAR</Text>
-              </View>
-            )}
-            <Text style={styles.tierName}>{tier.name}</Text>
-            <Text style={styles.tierPrice}>{tier.price}</Text>
-            <View style={{ gap: 8 }}>
-              {tier.features.map((f) => (
-                <View key={f} style={styles.featureRow}>
-                  <Ionicons name="checkmark-circle" size={16} color={Colors.green} />
-                  <Text style={styles.featureText}>{f}</Text>
+        {TIERS.map((tier) => {
+          const isCurrent = profile?.subscription_tier === tier.tier;
+          return (
+            <Card key={tier.name} style={styles.card}>
+              <View style={styles.planHead}>
+                <View style={styles.nameRow}>
+                  <Text style={text.title}>{tier.name}</Text>
+                  {tier.highlight && <Text style={text.muted}>Recommended</Text>}
                 </View>
-              ))}
-            </View>
-            <Button
-              title={`Start ${tier.name.replace("BidReel ", "")} Trial`}
-              onPress={() => handlePurchase(tier.productId)}
-              loading={busy === tier.productId}
-              disabled={busy !== null}
-              variant={tier.highlight ? "primary" : "secondary"}
-            />
-          </View>
-        ))}
+                <Text style={styles.price}>{tier.price}</Text>
+              </View>
+              <View style={styles.featureList}>
+                {tier.features.map((f) => (
+                  <View key={f} style={styles.featureRow}>
+                    <Check size={16} color={Colors.textSecondary} strokeWidth={1.75} />
+                    <Text style={styles.featureText}>{f}</Text>
+                  </View>
+                ))}
+              </View>
+              {isCurrent ? (
+                <Text style={text.muted}>Current plan</Text>
+              ) : (
+                <Button
+                  title={`Start ${tier.name.replace("BidReel ", "")} Trial`}
+                  onPress={() => handlePurchase(tier.productId)}
+                  loading={busy === tier.productId}
+                  disabled={busy !== null}
+                  variant={tier.highlight ? "primary" : "secondary"}
+                />
+              )}
+            </Card>
+          );
+        })}
 
-        <Pressable onPress={handleRestore} disabled={busy !== null}>
-          <Text style={styles.restoreText}>
-            {busy === "restore" ? "Restoring…" : "Restore Purchases"}
-          </Text>
-        </Pressable>
+        <View style={styles.restoreWrap}>
+          <Button
+            title="Restore Purchases"
+            onPress={handleRestore}
+            variant="ghost"
+            loading={busy === "restore"}
+            disabled={busy !== null}
+          />
+        </View>
 
         {/* Apple Guideline 3.1.2: auto-renewing subscriptions must link the
             Terms of Use (EULA) and Privacy Policy on the purchase screen. */}
         <View style={styles.legalRow}>
-          <Pressable
-            onPress={() => Linking.openURL("https://bidreel.io/terms.html")}
-          >
-            <Text style={styles.legalLink}>Terms of Use</Text>
-          </Pressable>
+          <LegalLink label="Terms of Use" url="https://bidreel.io/terms.html" />
           <Text style={styles.legalDot}>·</Text>
-          <Pressable
-            onPress={() => Linking.openURL("https://bidreel.io/privacy.html")}
-          >
-            <Text style={styles.legalLink}>Privacy Policy</Text>
-          </Pressable>
+          <LegalLink label="Privacy Policy" url="https://bidreel.io/privacy.html" />
         </View>
-        <Text style={styles.legalNote}>
+        <Text style={text.muted}>
           Subscriptions renew automatically until cancelled in your App Store
           settings.
         </Text>
@@ -167,53 +200,62 @@ export default function PaywallScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: 48 },
-  title: { color: Colors.text, fontSize: 26, fontWeight: "800" },
-  subtitle: { color: Colors.textSecondary, fontSize: 14, marginTop: -8 },
-  card: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.lg,
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    minHeight: 48,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+  },
+  container: {
     padding: Spacing.lg,
     gap: Spacing.md,
+    paddingBottom: Spacing.xxl,
   },
-  cardHighlight: { borderColor: Colors.accent, borderWidth: 2 },
-  popularBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: Colors.accent,
-    borderRadius: Radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  card: { gap: Spacing.md },
+  planHead: { gap: Spacing.xs },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: Spacing.sm,
   },
-  popularText: { color: "#1A1405", fontSize: 10, fontWeight: "800", letterSpacing: 1 },
-  tierName: { color: Colors.text, fontSize: 20, fontWeight: "800" },
-  tierPrice: { color: Colors.accent, fontSize: 28, fontWeight: "900", marginTop: -8 },
-  featureRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  featureText: { color: Colors.textSecondary, fontSize: 14 },
-  restoreText: {
-    color: Colors.blue,
-    textAlign: "center",
-    fontSize: 14,
-    paddingVertical: Spacing.sm,
+  price: {
+    fontFamily: Fonts.semibold,
+    fontSize: Type.heading,
+    lineHeight: Math.round(Type.heading * 1.4),
+    letterSpacing: Type.trackHeading,
+    color: Colors.text,
   },
+  featureList: { gap: Spacing.sm },
+  featureRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  featureText: {
+    fontFamily: Fonts.regular,
+    fontSize: Type.body,
+    lineHeight: Math.round(Type.body * 1.4),
+    color: Colors.textSecondary,
+  },
+  restoreWrap: { alignSelf: "flex-start" },
   legalRow: {
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    gap: 8,
+    gap: Spacing.sm,
   },
   legalLink: {
+    fontFamily: Fonts.regular,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
     color: Colors.textSecondary,
-    fontSize: 13,
     textDecorationLine: "underline",
-    paddingVertical: 4,
+    paddingVertical: Spacing.xs,
   },
-  legalDot: { color: Colors.textMuted, fontSize: 13 },
-  legalNote: {
+  legalDot: {
+    fontFamily: Fonts.regular,
+    fontSize: Type.ui,
     color: Colors.textMuted,
-    fontSize: 11,
-    textAlign: "center",
-    marginTop: -4,
   },
 });

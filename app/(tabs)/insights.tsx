@@ -11,10 +11,9 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { Bid, proposalValue } from "@/lib/types";
 import { TEMPLATES } from "@/lib/templates";
-import { MetricCard } from "@/components/MetricCard";
-import { Screen } from "@/components/ui";
+import { Card, EmptyState, PageHeader, Screen, text } from "@/components/ui";
 import { ErrorBanner } from "@/components/ErrorBanner";
-import { Colors, Radius, Spacing } from "@/constants/Colors";
+import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
 
 const ACTIVE = ["sent", "viewed", "pending", "accepted"];
 
@@ -88,20 +87,34 @@ export default function InsightsScreen() {
 
   const funnelMax = Math.max(sent.length, 1);
   const funnel = [
-    { label: "Sent", n: sent.length, tint: Colors.blue },
-    { label: "Opened", n: viewed.length, tint: Colors.purple },
-    { label: "Won", n: won.length, tint: Colors.green },
+    { label: "Sent", n: sent.length },
+    { label: "Opened", n: viewed.length },
+    { label: "Won", n: won.length },
+  ];
+
+  const stats = [
+    { label: "Win rate", value: winRate === null ? "—" : `${winRate}%` },
+    {
+      label: "Avg deal size",
+      value: avgDeal === null ? "—" : `$${avgDeal.toLocaleString()}`,
+    },
+    { label: "Open rate", value: openRate === null ? "—" : `${openRate}%` },
+    {
+      label: "Deposits collected",
+      value: `$${depositsCollected.toLocaleString()}`,
+    },
   ];
 
   return (
     <Screen>
       {loadError ? <ErrorBanner onRetry={load} /> : null}
+      <PageHeader title="Insights" />
       <ScrollView
         contentContainerStyle={styles.container}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            tintColor={Colors.accent}
+            tintColor={Colors.textSecondary}
             onRefresh={async () => {
               setRefreshing(true);
               await load();
@@ -110,19 +123,19 @@ export default function InsightsScreen() {
           />
         }
       >
-        <Text style={styles.title}>Insights</Text>
-
         <View style={styles.metrics}>
-          <MetricCard label="Win Rate" value={winRate === null ? "—" : `${winRate}%`} icon="trophy" tint={Colors.green} />
-          <MetricCard label="Avg Deal Size" value={avgDeal === null ? "—" : `$${avgDeal.toLocaleString()}`} icon="cash" tint={Colors.accent} />
-          <MetricCard label="Open Rate" value={openRate === null ? "—" : `${openRate}%`} icon="eye" tint={Colors.blue} />
-          <MetricCard label="Deposits Collected" value={`$${depositsCollected.toLocaleString()}`} icon="card" tint={Colors.purple} />
+          {stats.map((s) => (
+            <Card key={s.label} style={styles.stat}>
+              <Text style={text.label}>{s.label}</Text>
+              <Text style={styles.statValue} numberOfLines={1}>
+                {s.value}
+              </Text>
+            </Card>
+          ))}
         </View>
 
         {bids.length === 0 ? (
-          <Text style={styles.empty}>
-            Generate and send a few proposals — your win data shows up here.
-          </Text>
+          <EmptyState message="Generate and send a few proposals — your win data shows up here." />
         ) : (
           <>
             <Section title="Conversion Funnel">
@@ -131,13 +144,13 @@ export default function InsightsScreen() {
                   const prev = i > 0 ? funnel[i - 1].n : null;
                   const stepRate = prev && prev > 0 ? Math.round((f.n / prev) * 100) : null;
                   return (
-                    <View key={f.label} style={{ gap: 5 }}>
+                    <View key={f.label} style={{ gap: Spacing.xs }}>
                       <View style={styles.funnelHead}>
                         <Text style={styles.funnelLabel}>{f.label}</Text>
                         <Text style={styles.funnelN}>
                           {f.n}
                           {stepRate !== null ? (
-                            <Text style={styles.funnelRate}>  {stepRate}%</Text>
+                            <Text style={text.muted}>  {stepRate}%</Text>
                           ) : null}
                         </Text>
                       </View>
@@ -145,7 +158,7 @@ export default function InsightsScreen() {
                         <View
                           style={[
                             styles.fill,
-                            { width: `${Math.max((f.n / funnelMax) * 100, 2)}%`, backgroundColor: f.tint },
+                            { width: `${Math.max((f.n / funnelMax) * 100, 2)}%` },
                           ]}
                         />
                       </View>
@@ -153,7 +166,7 @@ export default function InsightsScreen() {
                   );
                 })}
               </View>
-              <Text style={styles.note}>
+              <Text style={text.muted}>
                 {acceptRate === null
                   ? "Of the proposals clients open, the share that turn into wins shows here."
                   : `${acceptRate}% of opened proposals turn into wins.`}
@@ -162,26 +175,23 @@ export default function InsightsScreen() {
 
             <Section title="Win Rate by Template">
               {byTemplate.length === 0 ? (
-                <Text style={styles.note}>No decided bids yet.</Text>
+                <Text style={text.muted}>No decided bids yet.</Text>
               ) : (
                 <View style={{ gap: 12 }}>
                   {byTemplate.map((t) => (
-                    <View key={t.name} style={{ gap: 5 }}>
+                    <View key={t.name} style={{ gap: Spacing.xs }}>
                       <View style={styles.funnelHead}>
                         <Text style={styles.tplName}>{t.name}</Text>
-                        <Text style={styles.tplStat}>
+                        <Text style={styles.funnelN}>
                           {t.winRate === null ? "—" : `${t.winRate}%`}
-                          <Text style={styles.tplCount}>  ·  {t.count} bid{t.count === 1 ? "" : "s"}</Text>
+                          <Text style={text.muted}>  ·  {t.count} bid{t.count === 1 ? "" : "s"}</Text>
                         </Text>
                       </View>
                       <View style={styles.track}>
                         <View
                           style={[
                             styles.fill,
-                            {
-                              width: `${Math.max(t.winRate ?? 0, 2)}%`,
-                              backgroundColor: Colors.green,
-                            },
+                            { width: `${Math.max(t.winRate ?? 0, 2)}%` },
                           ]}
                         />
                       </View>
@@ -194,13 +204,11 @@ export default function InsightsScreen() {
             <Section title="Pipeline">
               <View style={styles.pipeRow}>
                 <Text style={styles.pipeLabel}>Open pipeline value</Text>
-                <Text style={styles.pipeValue}>${pipeline.toLocaleString()}</Text>
+                <Text style={text.title}>${pipeline.toLocaleString()}</Text>
               </View>
               <View style={styles.pipeRow}>
                 <Text style={styles.pipeLabel}>Revenue won</Text>
-                <Text style={[styles.pipeValue, { color: Colors.green }]}>
-                  ${wonValue.toLocaleString()}
-                </Text>
+                <Text style={text.title}>${wonValue.toLocaleString()}</Text>
               </View>
             </Section>
           </>
@@ -212,55 +220,79 @@ export default function InsightsScreen() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+    <Card style={styles.section}>
+      <Text style={text.label}>{title}</Text>
       {children}
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: Spacing.md, gap: Spacing.md, paddingBottom: 48 },
-  title: { color: Colors.text, fontSize: 24, fontWeight: "800" },
-  metrics: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
-  empty: {
-    color: Colors.textSecondary,
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-    marginTop: Spacing.lg,
-  },
-  section: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
+  container: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xxl,
     gap: Spacing.md,
   },
-  sectionTitle: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 1,
+  metrics: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
+  stat: { flex: 1, minWidth: "45%", gap: Spacing.xs },
+  statValue: {
+    color: Colors.text,
+    fontFamily: Fonts.semibold,
+    fontSize: Type.heading,
+    lineHeight: Math.round(Type.heading * 1.4),
+    letterSpacing: Type.trackHeading,
   },
-  funnelHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  funnelLabel: { color: Colors.text, fontSize: 14, fontWeight: "600" },
-  funnelN: { color: Colors.text, fontSize: 14, fontWeight: "700" },
-  funnelRate: { color: Colors.textMuted, fontSize: 12, fontWeight: "600" },
-  tplName: { color: Colors.text, fontSize: 14, fontWeight: "600", flex: 1, paddingRight: 8 },
-  tplStat: { color: Colors.green, fontSize: 14, fontWeight: "700" },
-  tplCount: { color: Colors.textMuted, fontSize: 12, fontWeight: "500" },
+  section: { gap: Spacing.md },
+  funnelHead: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  funnelLabel: {
+    color: Colors.text,
+    fontFamily: Fonts.medium,
+    fontSize: Type.body,
+    lineHeight: Math.round(Type.body * 1.4),
+    letterSpacing: Type.trackUi,
+  },
+  funnelN: {
+    color: Colors.text,
+    fontFamily: Fonts.semibold,
+    fontSize: Type.body,
+    lineHeight: Math.round(Type.body * 1.4),
+    letterSpacing: Type.trackUi,
+  },
+  tplName: {
+    color: Colors.text,
+    fontFamily: Fonts.medium,
+    fontSize: Type.body,
+    lineHeight: Math.round(Type.body * 1.4),
+    letterSpacing: Type.trackUi,
+    flex: 1,
+    paddingRight: Spacing.sm,
+  },
   track: {
     height: 8,
-    borderRadius: 4,
+    borderRadius: Radius.sm,
     backgroundColor: Colors.surfaceRaised,
     overflow: "hidden",
   },
-  fill: { height: 8, borderRadius: 4 },
-  note: { color: Colors.textMuted, fontSize: 12, lineHeight: 17 },
-  pipeRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  pipeLabel: { color: Colors.textSecondary, fontSize: 14 },
-  pipeValue: { color: Colors.text, fontSize: 16, fontWeight: "700" },
+  fill: {
+    height: 8,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.textMuted,
+  },
+  pipeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    minHeight: 24,
+  },
+  pipeLabel: {
+    color: Colors.textSecondary,
+    fontFamily: Fonts.regular,
+    fontSize: Type.body,
+    lineHeight: Math.round(Type.body * 1.4),
+  },
 });

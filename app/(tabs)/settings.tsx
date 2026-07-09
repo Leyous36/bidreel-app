@@ -6,7 +6,6 @@ import {
   View,
   Pressable,
   Image,
-  ActivityIndicator,
 } from "react-native";
 import { Alert } from "@/lib/dialog";
 import { useRouter } from "expo-router";
@@ -17,8 +16,19 @@ import { useAuth } from "@/lib/auth-context";
 import { restorePurchases } from "@/lib/revenue-cat";
 import { deleteAccount, connectStripe } from "@/lib/account";
 import { uploadStudioLogo } from "@/lib/branding";
-import { Button, Field, Screen } from "@/components/ui";
-import { Colors, Radius, Spacing } from "@/constants/Colors";
+import {
+  Button,
+  Card,
+  Field,
+  Hairline,
+  PageHeader,
+  Row,
+  Screen,
+  focusRing,
+  text,
+  useInteractive,
+} from "@/components/ui";
+import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
 
 const BRAND_SWATCHES = [
   "#F5B82E",
@@ -31,6 +41,65 @@ const BRAND_SWATCHES = [
   "#F4F6FA",
 ];
 const DEPOSIT_OPTIONS = [0, 25, 50, 75];
+
+function Swatch({
+  color,
+  selected,
+  onPress,
+}: {
+  color: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const { hovered, focused, handlers } = useInteractive();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Brand color ${color}`}
+      onPress={onPress}
+      {...handlers}
+      style={({ pressed }) => [
+        styles.swatch,
+        { backgroundColor: color },
+        selected
+          ? { borderColor: Colors.text }
+          : hovered && { borderColor: Colors.borderStrong },
+        focusRing(focused),
+        pressed && { opacity: 0.8 },
+      ]}
+    />
+  );
+}
+
+function DepositChip({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const { hovered, focused, handlers } = useInteractive();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      {...handlers}
+      style={({ pressed }) => [
+        styles.chip,
+        selected
+          ? styles.chipActive
+          : (hovered || pressed) && { backgroundColor: Colors.surfaceHover },
+        focusRing(focused),
+      ]}
+    >
+      <Text style={[styles.chipText, selected && styles.chipTextActive]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
 
 export default function SettingsScreen() {
   const { session, profile, refreshProfile, signOut } = useAuth();
@@ -164,6 +233,7 @@ export default function SettingsScreen() {
 
   return (
     <Screen>
+      <PageHeader title="Settings" />
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.sectionTitle}>Studio Profile</Text>
         <Field
@@ -185,7 +255,8 @@ export default function SettingsScreen() {
           keyboardType="phone-pad"
           placeholder="(937) 555-0100"
         />
-        <Text style={styles.subLabel}>Proposal branding</Text>
+
+        <Text style={styles.sectionTitle}>Proposal branding</Text>
         <View style={styles.logoRow}>
           <View style={styles.logoPreview}>
             {logoUrl ? (
@@ -196,131 +267,159 @@ export default function SettingsScreen() {
               </Text>
             )}
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.fieldLabel}>Studio logo</Text>
-            <Pressable
-              style={styles.logoBtn}
-              onPress={pickLogo}
-              disabled={uploadingLogo}
-            >
-              {uploadingLogo ? (
-                <ActivityIndicator color={Colors.accent} />
-              ) : (
-                <Text style={styles.logoBtnText}>
-                  {logoUrl ? "Change logo" : "Upload logo"}
-                </Text>
-              )}
-            </Pressable>
+          <View style={styles.logoActions}>
+            <Text style={text.label}>Studio logo</Text>
+            <View style={styles.btnRow}>
+              <Button
+                title={logoUrl ? "Change logo" : "Upload logo"}
+                variant="secondary"
+                onPress={pickLogo}
+                loading={uploadingLogo}
+              />
+            </View>
           </View>
         </View>
 
-        <Text style={styles.fieldLabel}>Brand color</Text>
+        <Text style={text.label}>Brand color</Text>
         <View style={styles.swatchRow}>
           {BRAND_SWATCHES.map((c) => (
-            <Pressable
+            <Swatch
               key={c}
+              color={c}
+              selected={brandColor === c}
               onPress={() => setBrandColor(c)}
-              style={[
-                styles.swatch,
-                { backgroundColor: c },
-                brandColor === c && styles.swatchActive,
-              ]}
             />
           ))}
         </View>
 
-        <Text style={styles.fieldLabel}>Default deposit</Text>
+        <Text style={text.label}>Default deposit</Text>
         <View style={styles.chipRow}>
           {DEPOSIT_OPTIONS.map((n) => (
-            <Pressable
+            <DepositChip
               key={n}
+              label={n === 0 ? "None" : `${n}%`}
+              selected={depositPct === n}
               onPress={() => setDepositPct(n)}
-              style={[styles.chip, depositPct === n && styles.chipActive]}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  depositPct === n && styles.chipTextActive,
-                ]}
-              >
-                {n === 0 ? "None" : `${n}%`}
-              </Text>
-            </Pressable>
+            />
           ))}
         </View>
 
-        <Button title="Save Profile" onPress={handleSave} loading={busy} />
+        <View style={styles.btnRow}>
+          <Button title="Save Profile" onPress={handleSave} loading={busy} />
+        </View>
 
         <Text style={styles.sectionTitle}>Payouts</Text>
-        <View style={styles.planCard}>
+        <Card style={styles.sectionCard}>
           {profile?.stripe_account_id ? (
             <>
-              <Text style={styles.payoutsOn}>✓ Payouts connected</Text>
-              <Text style={styles.planDetail}>
+              <View style={styles.statusRow}>
+                <View
+                  style={[styles.statusDot, { backgroundColor: Colors.green }]}
+                />
+                <Text style={styles.statusLabel}>Payouts connected</Text>
+              </View>
+              <Text style={styles.detailText}>
                 Deposits on accepted proposals go straight to your Stripe account.
               </Text>
-              <Pressable onPress={handleConnectPayouts} disabled={connectingStripe}>
-                <Text style={styles.restoreText}>
-                  {connectingStripe ? "Opening…" : "Manage / update payouts"}
-                </Text>
-              </Pressable>
+              <View style={styles.btnRow}>
+                <Button
+                  title="Manage / update payouts"
+                  variant="secondary"
+                  onPress={handleConnectPayouts}
+                  loading={connectingStripe}
+                />
+              </View>
             </>
           ) : (
             <>
-              <Text style={styles.planName}>Collect deposits</Text>
-              <Text style={styles.planDetail}>
+              <Text style={text.title}>Collect deposits</Text>
+              <Text style={styles.detailText}>
                 Connect Stripe to let clients pay a booking deposit the moment they
                 accept a proposal. Money lands in your account.
               </Text>
-              <Button
-                title="Connect payouts"
-                onPress={handleConnectPayouts}
-                loading={connectingStripe}
-              />
+              <View style={styles.btnRow}>
+                <Button
+                  title="Connect payouts"
+                  variant="secondary"
+                  onPress={handleConnectPayouts}
+                  loading={connectingStripe}
+                />
+              </View>
             </>
           )}
-        </View>
+        </Card>
 
         <Text style={styles.sectionTitle}>Subscription</Text>
-        <View style={styles.planCard}>
-          <Text style={styles.planName}>
-            {tier === "free"
-              ? "Free Plan"
-              : tier === "pro"
-                ? "BidReel Pro"
-                : "BidReel Studio"}
-          </Text>
-          <Text style={styles.planDetail}>
+        <Card style={styles.sectionCard}>
+          <View style={styles.statusRow}>
+            <View
+              style={[
+                styles.statusDot,
+                {
+                  backgroundColor:
+                    tier === "free" ? Colors.status.draft : Colors.green,
+                },
+              ]}
+            />
+            <Text style={styles.statusLabel}>
+              {tier === "free"
+                ? "Free Plan"
+                : tier === "pro"
+                  ? "BidReel Pro"
+                  : "BidReel Studio"}
+            </Text>
+          </View>
+          <Text style={styles.detailText}>
             {tier === "free"
               ? "3 proposals/month · 2 templates · BidReel branding"
               : tier === "pro"
                 ? "Unlimited proposals · All templates · Your branding"
                 : "Everything in Pro · Client portal · Up to 5 team members"}
           </Text>
-          {tier === "free" && (
-            <Button title="Upgrade" onPress={() => router.push("/paywall")} />
-          )}
-          <Pressable
-            onPress={async () => {
-              await restorePurchases();
-              await refreshProfile();
-              Alert.alert("Done", "Purchases restored (if any were found).");
-            }}
-          >
-            <Text style={styles.restoreText}>Restore Purchases</Text>
-          </Pressable>
-        </View>
+          <View style={styles.btnRow}>
+            {tier === "free" && (
+              <Button
+                title="Upgrade"
+                variant="secondary"
+                onPress={() => router.push("/paywall")}
+              />
+            )}
+            <Button
+              title="Restore Purchases"
+              variant="ghost"
+              onPress={async () => {
+                await restorePurchases();
+                await refreshProfile();
+                Alert.alert("Done", "Purchases restored (if any were found).");
+              }}
+            />
+          </View>
+        </Card>
 
         <Text style={styles.sectionTitle}>Account</Text>
-        <Text style={styles.email}>{profile?.email ?? session?.user.email}</Text>
-        <Button title="Sign Out" variant="secondary" onPress={signOut} />
-
-        <Pressable onPress={confirmDeleteAccount} disabled={deleting}>
-          <Text style={styles.deleteText}>
-            {deleting ? "Deleting account…" : "Delete Account"}
-          </Text>
-        </Pressable>
-        <Text style={styles.deleteHint}>
+        <View style={styles.group}>
+          <Row style={styles.groupRow}>
+            <Text style={text.label}>Email</Text>
+            <Text style={styles.emailValue} numberOfLines={1}>
+              {profile?.email ?? session?.user.email}
+            </Text>
+          </Row>
+          <Hairline style={styles.groupDivider} />
+          <Row onPress={signOut}>
+            <Text style={text.ui}>Sign Out</Text>
+          </Row>
+          <Hairline style={styles.groupDivider} />
+          <Row
+            onPress={() => {
+              if (!deleting) confirmDeleteAccount();
+            }}
+          >
+            <Text style={[text.ui, { color: Colors.red }]}>
+              {deleting ? "Deleting account…" : "Delete Account"}
+            </Text>
+          </Row>
+        </View>
+        <Text style={text.muted}>
           Permanently deletes your account and all proposals. This can&apos;t be undone.
         </Text>
       </ScrollView>
@@ -329,89 +428,109 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: Spacing.md, gap: Spacing.md, paddingBottom: 48 },
-  sectionTitle: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginTop: Spacing.sm,
+  container: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xxl,
+    gap: Spacing.md,
   },
-  planCard: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
+  sectionTitle: {
+    fontFamily: Fonts.medium,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+    color: Colors.textSecondary,
+    marginTop: Spacing.lg,
+  },
+  sectionCard: { gap: Spacing.sm },
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
-  subLabel: {
-    color: Colors.text,
-    fontSize: 15,
-    fontWeight: "700",
-    marginTop: Spacing.sm,
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: Radius.pill,
   },
-  fieldLabel: { color: Colors.textSecondary, fontSize: 13, fontWeight: "600" },
+  statusLabel: {
+    fontFamily: Fonts.medium,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+    color: Colors.text,
+  },
+  detailText: {
+    fontFamily: Fonts.regular,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+    color: Colors.textSecondary,
+  },
   logoRow: { flexDirection: "row", alignItems: "center", gap: Spacing.md },
+  logoActions: { flex: 1, gap: Spacing.sm },
   logoPreview: {
-    width: 64,
-    height: 64,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
     backgroundColor: Colors.surfaceRaised,
-    borderWidth: 1,
-    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
-  logoImg: { width: 64, height: 64 },
-  logoPlaceholder: { color: Colors.accent, fontSize: 26, fontWeight: "800" },
-  logoBtn: {
-    marginTop: 6,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
-    paddingVertical: 10,
+  logoImg: { width: 40, height: 40 },
+  logoPlaceholder: {
+    fontFamily: Fonts.semibold,
+    fontSize: Type.heading,
+    lineHeight: Math.round(Type.heading * 1.4),
+    color: Colors.textSecondary,
+  },
+  btnRow: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: Spacing.sm,
   },
-  logoBtnText: { color: Colors.text, fontSize: 14, fontWeight: "700" },
-  swatchRow: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  swatch: { width: 34, height: 34, borderRadius: 17, borderWidth: 2, borderColor: "transparent" },
-  swatchActive: { borderColor: Colors.text },
-  chipRow: { flexDirection: "row", gap: Spacing.sm },
+  swatchRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
+  swatch: {
+    width: 24,
+    height: 24,
+    borderRadius: Radius.sm,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
   chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: Radius.pill,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 28,
+    paddingHorizontal: 12,
+    borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border,
     backgroundColor: Colors.surface,
   },
-  chipActive: { backgroundColor: Colors.accent + "22", borderColor: Colors.accent },
-  chipText: { color: Colors.textMuted, fontSize: 14, fontWeight: "700" },
-  chipTextActive: { color: Colors.accent },
-  planName: { color: Colors.accent, fontSize: 18, fontWeight: "800" },
-  payoutsOn: { color: Colors.green, fontSize: 18, fontWeight: "800" },
-  planDetail: { color: Colors.textSecondary, fontSize: 13, lineHeight: 18 },
-  restoreText: {
-    color: Colors.blue,
-    fontSize: 13,
-    textAlign: "center",
-    paddingTop: 4,
+  chipActive: {
+    backgroundColor: Colors.accentMuted,
+    borderColor: Colors.accent,
   },
-  deleteText: {
-    color: Colors.red,
-    fontSize: 15,
-    fontWeight: "600",
-    textAlign: "center",
-    paddingTop: Spacing.sm,
+  chipText: {
+    fontFamily: Fonts.medium,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+    letterSpacing: Type.trackUi,
+    color: Colors.textSecondary,
   },
-  deleteHint: {
-    color: Colors.textMuted,
-    fontSize: 12,
-    textAlign: "center",
+  chipTextActive: { color: Colors.text },
+  group: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.xs,
   },
-  email: { color: Colors.textMuted, fontSize: 14 },
+  groupRow: { justifyContent: "space-between" },
+  groupDivider: { marginHorizontal: 12 },
+  emailValue: {
+    fontFamily: Fonts.regular,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+    color: Colors.textSecondary,
+    flexShrink: 1,
+  },
 });

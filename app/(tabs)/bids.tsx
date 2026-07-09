@@ -4,19 +4,28 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  Platform,
   Pressable,
   TextInput,
+  TextStyle,
   ScrollView,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Search } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { Bid, BidStatus, proposalValue } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ShareButton } from "@/components/ShareButton";
 import { ErrorBanner } from "@/components/ErrorBanner";
-import { Screen } from "@/components/ui";
-import { Colors, Radius, Spacing } from "@/constants/Colors";
+import {
+  Screen,
+  PageHeader,
+  Row,
+  EmptyState,
+  useInteractive,
+  focusRing,
+} from "@/components/ui";
+import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
 import { getTemplate } from "@/lib/templates";
 
 const FILTERS: { key: BidStatus | "all"; label: string }[] = [
@@ -28,10 +37,40 @@ const FILTERS: { key: BidStatus | "all"; label: string }[] = [
   { key: "lost", label: "Lost" },
 ];
 
+function FilterChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const { hovered, focused, handlers } = useInteractive();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      {...handlers}
+      style={({ pressed }) => [
+        styles.chip,
+        active && { backgroundColor: Colors.accentMuted },
+        (hovered || pressed) && !active && { backgroundColor: Colors.surfaceHover },
+        focusRing(focused),
+      ]}
+    >
+      <Text style={[styles.chipText, active && { color: Colors.text }]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 export default function BidsScreen() {
   const [bids, setBids] = useState<Bid[]>([]);
   const [filter, setFilter] = useState<BidStatus | "all">("all");
   const [search, setSearch] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const router = useRouter();
 
@@ -63,14 +102,23 @@ export default function BidsScreen() {
 
   return (
     <Screen>
-      <View style={styles.searchWrap}>
-        <Ionicons name="search" size={16} color={Colors.textMuted} />
+      <PageHeader title="Bids" />
+      <View
+        style={[styles.searchWrap, searchFocused && { borderColor: Colors.accent }]}
+      >
+        <Search size={16} color={Colors.textMuted} strokeWidth={1.75} />
         <TextInput
-          style={styles.searchInput}
+          style={[
+            styles.searchInput,
+            Platform.OS === "web" &&
+              ({ outlineStyle: "none" } as unknown as TextStyle),
+          ]}
           placeholder="Search by client name"
           placeholderTextColor={Colors.textMuted}
           value={search}
           onChangeText={setSearch}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
         />
       </View>
       <View>
@@ -80,20 +128,12 @@ export default function BidsScreen() {
           contentContainerStyle={styles.filters}
         >
           {FILTERS.map((f) => (
-            <Pressable
+            <FilterChip
               key={f.key}
+              label={f.label}
+              active={filter === f.key}
               onPress={() => setFilter(f.key)}
-              style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  filter === f.key && styles.filterTextActive,
-                ]}
-              >
-                {f.label}
-              </Text>
-            </Pressable>
+            />
           ))}
         </ScrollView>
       </View>
@@ -103,21 +143,22 @@ export default function BidsScreen() {
         keyExtractor={(b) => b.id}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>No bids match.</Text>
+          <EmptyState
+            message="No bids match."
+            actionLabel="New bid"
+            onAction={() => router.push("/(tabs)/create")}
+          />
         }
         renderItem={({ item }) => (
-          <Pressable
-            style={({ pressed }) => [styles.row, pressed && { opacity: 0.8 }]}
-            onPress={() => router.push(`/bid/${item.id}`)}
-          >
-            <View style={{ flex: 1, gap: 4 }}>
+          <Row style={styles.bidRow} onPress={() => router.push(`/bid/${item.id}`)}>
+            <View style={styles.rowMain}>
               <Text style={styles.client}>{item.client_name}</Text>
               <Text style={styles.meta}>
                 {getTemplate(item.template_id)?.name ?? item.template_id} ·{" "}
                 {new Date(item.created_at).toLocaleDateString()}
               </Text>
             </View>
-            <View style={{ alignItems: "flex-end", gap: 6 }}>
+            <View style={styles.rowEnd}>
               <Text style={styles.amount}>
                 $
                 {(
@@ -136,7 +177,7 @@ export default function BidsScreen() {
                 )
               }
             />
-          </Pressable>
+          </Row>
         )}
       />
     </Screen>
@@ -147,48 +188,68 @@ const styles = StyleSheet.create({
   searchWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    margin: Spacing.md,
-    marginBottom: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-  },
-  searchInput: { flex: 1, color: Colors.text, paddingVertical: 10, fontSize: 15 },
-  filters: { paddingHorizontal: Spacing.md, gap: Spacing.sm },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  filterChipActive: {
-    backgroundColor: Colors.accent,
-    borderColor: Colors.accent,
-  },
-  filterText: { color: Colors.textSecondary, fontSize: 13, fontWeight: "600" },
-  filterTextActive: { color: "#1A1405" },
-  list: { padding: Spacing.md, gap: Spacing.sm },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: Spacing.sm,
+    height: 36,
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: Radius.md,
-    padding: Spacing.md,
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
+    paddingHorizontal: 12,
   },
-  client: { color: Colors.text, fontSize: 16, fontWeight: "700" },
-  meta: { color: Colors.textMuted, fontSize: 12 },
-  amount: { color: Colors.text, fontSize: 15, fontWeight: "700" },
-  emptyText: {
+  searchInput: {
+    flex: 1,
+    color: Colors.text,
+    fontFamily: Fonts.regular,
+    fontSize: Type.body,
+    paddingVertical: 0,
+  },
+  filters: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xs,
+    gap: Spacing.xs,
+  },
+  chip: {
+    height: 28,
+    paddingHorizontal: 12,
+    borderRadius: Radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chipText: {
+    fontFamily: Fonts.medium,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+    letterSpacing: Type.trackUi,
     color: Colors.textSecondary,
-    textAlign: "center",
-    padding: Spacing.xl,
+  },
+  list: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.lg,
+  },
+  bidRow: { paddingVertical: Spacing.sm },
+  rowMain: { flex: 1, gap: Spacing.xxs },
+  rowEnd: { alignItems: "flex-end", gap: Spacing.xs },
+  client: {
+    fontFamily: Fonts.medium,
+    fontSize: Type.body,
+    lineHeight: Math.round(Type.body * 1.4),
+    color: Colors.text,
+  },
+  meta: {
+    fontFamily: Fonts.regular,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+    color: Colors.textMuted,
+  },
+  amount: {
+    fontFamily: Fonts.medium,
+    fontSize: Type.body,
+    lineHeight: Math.round(Type.body * 1.4),
+    color: Colors.text,
+    textAlign: "right",
   },
 });

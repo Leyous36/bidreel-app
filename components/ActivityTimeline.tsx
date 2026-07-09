@@ -1,12 +1,11 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { BidEvent } from "@/lib/types";
 import { timeAgo } from "@/lib/time";
 import { Colors, Radius, Spacing } from "@/constants/Colors";
+import { Card, EmptyState, Row, text } from "@/components/ui";
 
-type Row = {
-  icon: keyof typeof Ionicons.glyphMap;
+type TimelineRow = {
   color: string;
   title: string;
   time: string;
@@ -21,34 +20,27 @@ export function ActivityTimeline({ events }: { events: BidEvent[] }) {
 
   return (
     <View>
-      <Text style={styles.sectionTitle}>Activity</Text>
+      <Text style={[text.label, styles.sectionTitle]}>Activity</Text>
       {rows.length === 0 ? (
-        <Text style={styles.empty}>
-          No activity yet — share the proposal to start tracking.
-        </Text>
+        <EmptyState message="No activity yet — share the proposal to start tracking." />
       ) : (
-        <View style={styles.wrap}>
+        <Card style={styles.card}>
           {rows.map((r, i) => (
-            <View key={i} style={styles.row}>
-              <View style={styles.rail}>
-                <View style={[styles.dot, { borderColor: r.color }]}>
-                  <Ionicons name={r.icon} size={12} color={r.color} />
-                </View>
-                {i < rows.length - 1 && <View style={styles.line} />}
-              </View>
-              <View style={styles.body}>
-                <Text style={styles.title}>{r.title}</Text>
-                <Text style={styles.time}>{timeAgo(r.time)}</Text>
-              </View>
-            </View>
+            <Row key={i}>
+              <View style={[styles.dot, { backgroundColor: r.color }]} />
+              <Text style={[text.body, styles.title]} numberOfLines={1}>
+                {r.title}
+              </Text>
+              <Text style={text.muted}>{timeAgo(r.time)}</Text>
+            </Row>
           ))}
-        </View>
+        </Card>
       )}
     </View>
   );
 }
 
-function buildRows(events: BidEvent[]): Row[] {
+function buildRows(events: BidEvent[]): TimelineRow[] {
   const byTime = [...events].sort(
     (a, b) => +new Date(a.created_at) - +new Date(b.created_at),
   );
@@ -56,13 +48,12 @@ function buildRows(events: BidEvent[]): Row[] {
   const last = (t: string) =>
     [...byTime].reverse().find((e) => e.type === t);
 
-  const rows: Row[] = [];
+  const rows: TimelineRow[] = [];
 
   const shared = first("shared");
   if (shared) {
     rows.push({
-      icon: "share-social",
-      color: Colors.accent,
+      color: Colors.status.sent,
       title: "Proposal shared",
       time: shared.created_at,
     });
@@ -71,8 +62,7 @@ function buildRows(events: BidEvent[]): Row[] {
   const views = byTime.filter((e) => e.type === "viewed");
   if (views.length) {
     rows.push({
-      icon: "eye",
-      color: Colors.blue,
+      color: Colors.status.viewed,
       title:
         views.length > 1
           ? `Opened by client · ${views.length}×`
@@ -85,8 +75,7 @@ function buildRows(events: BidEvent[]): Row[] {
   if (accepted) {
     const name = (accepted.metadata as { name?: string } | null)?.name;
     rows.push({
-      icon: "checkmark-circle",
-      color: Colors.green,
+      color: Colors.status.accepted,
       title: name ? `Accepted by ${name}` : "Accepted",
       time: accepted.created_at,
     });
@@ -98,7 +87,6 @@ function buildRows(events: BidEvent[]): Row[] {
     const cents = (paid.metadata as { amount_cents?: number } | null)
       ?.amount_cents;
     rows.push({
-      icon: "cash",
       color: Colors.green,
       title: cents
         ? `Deposit paid · $${Math.round(cents / 100).toLocaleString()}`
@@ -107,8 +95,7 @@ function buildRows(events: BidEvent[]): Row[] {
     });
   } else if (requested) {
     rows.push({
-      icon: "card",
-      color: Colors.accent,
+      color: Colors.status.pending,
       title: "Checkout started",
       time: requested.created_at,
     });
@@ -118,35 +105,15 @@ function buildRows(events: BidEvent[]): Row[] {
 }
 
 const styles = StyleSheet.create({
-  sectionTitle: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: Spacing.sm,
+  sectionTitle: { marginBottom: Spacing.sm },
+  card: {
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.xs,
   },
-  empty: { color: Colors.textMuted, fontSize: 13 },
-  wrap: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-  },
-  row: { flexDirection: "row", gap: 12 },
-  rail: { alignItems: "center", width: 26 },
   dot: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 1.5,
-    backgroundColor: Colors.bg,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 8,
+    height: 8,
+    borderRadius: Radius.pill,
   },
-  line: { width: 2, flex: 1, backgroundColor: Colors.border, marginVertical: 2 },
-  body: { flex: 1, paddingBottom: Spacing.md, paddingTop: 2 },
-  title: { color: Colors.text, fontSize: 15, fontWeight: "600" },
-  time: { color: Colors.textMuted, fontSize: 12, marginTop: 2 },
+  title: { flex: 1 },
 });

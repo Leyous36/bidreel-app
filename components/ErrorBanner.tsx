@@ -1,7 +1,7 @@
 import React from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Colors, Radius, Spacing } from "@/constants/Colors";
+import { View, Text, StyleSheet } from "react-native";
+import { Button } from "@/components/ui";
+import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
 
 /**
  * Inline "couldn't load" banner with a Retry action. Shown when a data fetch
@@ -16,11 +16,8 @@ export function ErrorBanner({
 }) {
   return (
     <View style={styles.banner}>
-      <Ionicons name="cloud-offline-outline" size={16} color={Colors.red} />
       <Text style={styles.text}>{message}</Text>
-      <Pressable onPress={onRetry} hitSlop={8}>
-        <Text style={styles.retry}>Retry</Text>
-      </Pressable>
+      <Button title="Retry" variant="secondary" onPress={onRetry} />
     </View>
   );
 }
@@ -29,16 +26,20 @@ const styles = StyleSheet.create({
   banner: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: Colors.red + "1A",
-    borderWidth: 1,
-    borderColor: Colors.red + "55",
+    gap: Spacing.sm,
+    minHeight: 40,
+    backgroundColor: Colors.surface,
     borderRadius: Radius.md,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
     marginHorizontal: Spacing.md,
     marginBottom: Spacing.sm,
   },
-  text: { flex: 1, color: Colors.text, fontSize: 13 },
-  retry: { color: Colors.red, fontSize: 13, fontWeight: "700" },
+  text: {
+    flex: 1,
+    fontFamily: Fonts.regular,
+    fontSize: Type.ui,
+    lineHeight: Math.round(Type.ui * 1.4),
+    color: Colors.red,
+  },
 });

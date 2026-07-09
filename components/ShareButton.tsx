@@ -1,17 +1,13 @@
 import React, { useState } from "react";
-import {
-  Pressable,
-  ActivityIndicator,
-  Share,
-  StyleSheet,
-} from "react-native";
+import { ActivityIndicator, Share } from "react-native";
 import { Alert } from "@/lib/dialog";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import { Ionicons } from "@expo/vector-icons";
+import { Link, Share2 } from "lucide-react-native";
 import { shareProposal } from "@/lib/ai";
 import { Bid, BidStatus } from "@/lib/types";
-import { Colors, Radius } from "@/constants/Colors";
+import { IconButton } from "@/components/ui";
+import { Colors } from "@/constants/Colors";
 
 /**
  * Compact "share this proposal" button for use inside a list row. Generates the
@@ -56,38 +52,24 @@ export function ShareButton({
     }
   }
 
-  const tint = shared ? Colors.green : Colors.accent;
   return (
-    <Pressable
-      onPress={(e: any) => {
+    <IconButton
+      label={shared ? "Share link again" : "Share proposal"}
+      disabled={sharing}
+      onPress={(e?: { stopPropagation?: () => void }) => {
         e?.stopPropagation?.();
         handleShare();
       }}
-      disabled={sharing}
-      hitSlop={8}
-      accessibilityLabel={shared ? "Share link again" : "Share proposal"}
-      style={({ pressed }) => [
-        styles.btn,
-        { borderColor: tint + "55", backgroundColor: tint + "14" },
-        pressed && { opacity: 0.65 },
-      ]}
     >
       {sharing ? (
-        <ActivityIndicator size="small" color={tint} />
+        <ActivityIndicator size="small" color={Colors.textSecondary} />
+      ) : shared ? (
+        // Icon shape (link vs share) carries the "already has a live link"
+        // meaning — no color needed; the palette stays grayscale.
+        <Link size={16} color={Colors.textSecondary} strokeWidth={1.75} />
       ) : (
-        <Ionicons name={shared ? "link" : "share-outline"} size={18} color={tint} />
+        <Share2 size={16} color={Colors.textMuted} strokeWidth={1.75} />
       )}
-    </Pressable>
+    </IconButton>
   );
 }
-
-const styles = StyleSheet.create({
-  btn: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
