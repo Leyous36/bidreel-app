@@ -4,7 +4,9 @@
 -- turn the verified sending domain into an unmetered spam relay.
 
 CREATE TABLE IF NOT EXISTS email_log (
-  id         UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  -- gen_random_uuid() is built into Postgres (no extension / search_path
+  -- dependency), so this applies cleanly via `supabase db push`.
+  id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id    UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   bid_id     UUID REFERENCES bids(id) ON DELETE SET NULL,
   to_email   TEXT NOT NULL,
