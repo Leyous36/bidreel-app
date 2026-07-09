@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { Alert } from "@/lib/dialog";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { supabase } from "@/lib/supabase";
@@ -145,7 +145,7 @@ export default function CreateBidScreen() {
         <ScrollView contentContainerStyle={styles.container}>
           <Text style={styles.title}>{template.name}</Text>
           <Text style={styles.subtitle}>
-            Give me the basics — I'll write the full proposal.
+            Give me the basics — I&apos;ll write the full proposal.
           </Text>
           <Field
             label="Client name *"

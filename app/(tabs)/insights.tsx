@@ -13,6 +13,7 @@ import { Bid, proposalValue } from "@/lib/types";
 import { TEMPLATES } from "@/lib/templates";
 import { MetricCard } from "@/components/MetricCard";
 import { Screen } from "@/components/ui";
+import { ErrorBanner } from "@/components/ErrorBanner";
 import { Colors, Radius, Spacing } from "@/constants/Colors";
 
 const ACTIVE = ["sent", "viewed", "pending", "accepted"];
@@ -25,11 +26,17 @@ export default function InsightsScreen() {
   const { session } = useAuth();
   const [bids, setBids] = useState<Bid[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(async () => {
     if (!session) return;
-    const { data } = await supabase.from("bids").select("*");
-    if (data) setBids(data as Bid[]);
+    const { data, error } = await supabase.from("bids").select("*");
+    if (error) {
+      setLoadError(true);
+    } else {
+      setBids(data as Bid[]);
+      setLoadError(false);
+    }
   }, [session]);
 
   useFocusEffect(
@@ -88,6 +95,7 @@ export default function InsightsScreen() {
 
   return (
     <Screen>
+      {loadError ? <ErrorBanner onRetry={load} /> : null}
       <ScrollView
         contentContainerStyle={styles.container}
         refreshControl={

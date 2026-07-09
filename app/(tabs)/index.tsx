@@ -19,6 +19,7 @@ import { FadeInView } from "@/components/FadeInView";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ShareButton } from "@/components/ShareButton";
 import { Screen } from "@/components/ui";
+import { ErrorBanner } from "@/components/ErrorBanner";
 import { Colors, Radius, Spacing } from "@/constants/Colors";
 
 type Range = "month" | "all";
@@ -79,16 +80,22 @@ export default function DashboardScreen() {
   const { session, profile } = useAuth();
   const [bids, setBids] = useState<Bid[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [range, setRange] = useState<Range>("month");
   const router = useRouter();
 
   const load = useCallback(async () => {
     if (!session) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("bids")
       .select("*")
       .order("created_at", { ascending: false });
-    if (data) setBids(data as Bid[]);
+    if (error) {
+      setLoadError(true);
+    } else {
+      setBids(data as Bid[]);
+      setLoadError(false);
+    }
   }, [session]);
 
   useFocusEffect(
@@ -202,6 +209,7 @@ export default function DashboardScreen() {
 
   return (
     <Screen>
+      {loadError ? <ErrorBanner onRetry={load} /> : null}
       <FlatList
         data={bids.slice(0, 10)}
         keyExtractor={(b) => b.id}

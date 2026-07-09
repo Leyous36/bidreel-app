@@ -60,22 +60,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-        initPurchases(session.user.id);
-        registerForPushNotificationsAsync(session.user.id);
-        loadProfile(session.user.id).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
-      }
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+        if (session) {
+          initPurchases(session.user.id);
+          registerForPushNotificationsAsync(session.user.id);
+          loadProfile(session.user.id).finally(() => setLoading(false));
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch(() => setLoading(false)); // never leave the app on a boot spinner
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
+        // Configure RevenueCat for whoever just signed in/up too — not only
+        // the launch session — or purchases fail until an app restart.
+        initPurchases(session.user.id);
         registerForPushNotificationsAsync(session.user.id);
         loadProfile(session.user.id);
       } else {
@@ -93,8 +99,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session, loadProfile]);
 
   const signOut = useCallback(async () => {
+    // Detach this device's push token first, so a signed-out phone stops
+    // receiving the account's proposal notifications. Best-effort.
+    if (session) {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ push_token: null })
+        .eq("id", session.user.id);
+      if (error) console.warn("push token clear failed:", error.message);
+    }
     await supabase.auth.signOut();
-  }, []);
+  }, [session]);
 
   return (
     <AuthContext.Provider

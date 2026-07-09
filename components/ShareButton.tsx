@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import {
   Pressable,
   ActivityIndicator,
-  Alert,
   Share,
   StyleSheet,
 } from "react-native";
+import { Alert } from "@/lib/dialog";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";

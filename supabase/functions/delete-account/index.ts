@@ -41,6 +41,22 @@ Deno.serve(async (req) => {
     }
     const uid = userData.user.id;
 
+    // Remove the user's uploaded logos so they don't orphan in storage.
+    // (payments / bid_events / email_log cascade via FK when bids/auth go.)
+    try {
+      const { data: files } = await admin.storage
+        .from("studio-logos")
+        .list(uid);
+      if (files && files.length > 0) {
+        await admin.storage
+          .from("studio-logos")
+          .remove(files.map((f) => `${uid}/${f.name}`));
+      }
+    } catch (e) {
+      console.error("delete-account storage cleanup:", e);
+      // Non-fatal — proceed with account deletion regardless.
+    }
+
     // Delete the user's data first (FKs reference auth.users), then the account.
     await admin.from("bids").delete().eq("user_id", uid);
     await admin.from("profiles").delete().eq("id", uid);

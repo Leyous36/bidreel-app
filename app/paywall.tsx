@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, Alert, Pressable } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
+import { Alert } from "@/lib/dialog";
+import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
@@ -88,6 +90,11 @@ export default function PaywallScreen() {
           "No active BidReel subscription was found for this Apple ID.",
         );
       }
+    } catch (e: unknown) {
+      Alert.alert(
+        "Restore failed",
+        e instanceof Error ? e.message : "Please try again.",
+      );
     } finally {
       setBusy(null);
     }
@@ -134,6 +141,26 @@ export default function PaywallScreen() {
             {busy === "restore" ? "Restoring…" : "Restore Purchases"}
           </Text>
         </Pressable>
+
+        {/* Apple Guideline 3.1.2: auto-renewing subscriptions must link the
+            Terms of Use (EULA) and Privacy Policy on the purchase screen. */}
+        <View style={styles.legalRow}>
+          <Pressable
+            onPress={() => Linking.openURL("https://bidreel.io/terms.html")}
+          >
+            <Text style={styles.legalLink}>Terms of Use</Text>
+          </Pressable>
+          <Text style={styles.legalDot}>·</Text>
+          <Pressable
+            onPress={() => Linking.openURL("https://bidreel.io/privacy.html")}
+          >
+            <Text style={styles.legalLink}>Privacy Policy</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.legalNote}>
+          Subscriptions renew automatically until cancelled in your App Store
+          settings.
+        </Text>
       </ScrollView>
     </Screen>
   );
@@ -169,5 +196,24 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 14,
     paddingVertical: Spacing.sm,
+  },
+  legalRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
+  legalLink: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    textDecorationLine: "underline",
+    paddingVertical: 4,
+  },
+  legalDot: { color: Colors.textMuted, fontSize: 13 },
+  legalNote: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    textAlign: "center",
+    marginTop: -4,
   },
 });

@@ -5,12 +5,12 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  Alert,
   ActivityIndicator,
   Share,
   Modal,
   TextInput,
 } from "react-native";
+import { Alert } from "@/lib/dialog";
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -37,7 +37,11 @@ const STATUS_OPTIONS: BidStatus[] = [
   "lost",
 ];
 
-const PUBLIC_BASE = "https://bidreel.io/p/";
+// Keep in sync with the edge functions' PUBLIC_PROPOSAL_BASE. share-proposal
+// returns the canonical URL directly; this is only used to rebuild the link
+// for copy/email when we already hold the token.
+const PUBLIC_BASE =
+  process.env.EXPO_PUBLIC_SHARE_BASE_URL ?? "https://bidreel.io/p/";
 
 export default function BidDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -45,6 +49,7 @@ export default function BidDetailScreen() {
   const [bid, setBid] = useState<Bid | null>(null);
   const [events, setEvents] = useState<BidEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [followupVisible, setFollowupVisible] = useState(false);
   const [followupText, setFollowupText] = useState("");
@@ -56,7 +61,7 @@ export default function BidDetailScreen() {
   const router = useRouter();
 
   const load = useCallback(async () => {
-    const [{ data }, { data: ev }] = await Promise.all([
+    const [{ data, error }, { data: ev }] = await Promise.all([
       supabase.from("bids").select("*").eq("id", id).single(),
       supabase
         .from("bid_events")
@@ -64,7 +69,15 @@ export default function BidDetailScreen() {
         .eq("bid_id", id)
         .order("created_at", { ascending: true }),
     ]);
-    if (data) setBid(data as Bid);
+    if (data) {
+      setBid(data as Bid);
+      setLoadError(false);
+    } else {
+      // No row (bad id / deleted / RLS) or a network error — show a real
+      // message instead of spinning forever.
+      setLoadError(true);
+      if (error) console.warn("bid load failed:", error.message);
+    }
     if (ev) setEvents(ev as BidEvent[]);
     setLoading(false);
   }, [id]);
@@ -77,9 +90,19 @@ export default function BidDetailScreen() {
 
   async function setStatus(status: BidStatus) {
     if (!bid) return;
+    const prev = bid.status;
     Haptics.selectionAsync();
     setBid({ ...bid, status });
-    await supabase.from("bids").update({ status }).eq("id", bid.id);
+    const { error } = await supabase
+      .from("bids")
+      .update({ status })
+      .eq("id", bid.id);
+    if (error) {
+      // Roll the optimistic change back so the UI doesn't lie about a save
+      // that didn't happen.
+      setBid((b) => (b ? { ...b, status: prev } : b));
+      Alert.alert("Couldn't update status", "Check your connection and retry.");
+    }
   }
 
   async function shareLink() {
@@ -163,6 +186,7 @@ export default function BidDetailScreen() {
     try {
       setSendingEmail(true);
       await sendProposalEmail({
+        bidId: bid.id,
         to: email,
         proposal: bid.proposal,
         clientName: bid.client_name,
@@ -234,18 +258,62 @@ export default function BidDetailScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          await supabase.from("bids").delete().eq("id", bid.id);
+          const { error } = await supabase
+            .from("bids")
+            .delete()
+            .eq("id", bid.id);
+          if (error) {
+            Alert.alert(
+              "Couldn't delete",
+              "Something went wrong — try again in a moment.",
+            );
+            return;
+          }
           router.back();
         },
       },
     ]);
   }
 
-  if (loading || !bid) {
+  if (loading) {
     return (
       <Screen>
         <View style={styles.center}>
           <ActivityIndicator color={Colors.accent} size="large" />
+        </View>
+      </Screen>
+    );
+  }
+
+  if (!bid) {
+    return (
+      <Screen>
+        <View style={styles.center}>
+          <Ionicons
+            name="alert-circle-outline"
+            size={40}
+            color={Colors.textMuted}
+          />
+          <Text style={styles.errorTitle}>Couldn&apos;t load this proposal</Text>
+          <Text style={styles.errorBody}>
+            {loadError
+              ? "It may have been deleted, or your connection dropped."
+              : "Something went wrong."}
+          </Text>
+          <View style={styles.errorButtons}>
+            <Pressable
+              style={styles.errorRetry}
+              onPress={() => {
+                setLoading(true);
+                load();
+              }}
+            >
+              <Text style={styles.errorRetryText}>Retry</Text>
+            </Pressable>
+            <Pressable style={styles.errorBack} onPress={() => router.back()}>
+              <Text style={styles.errorBackText}>Go back</Text>
+            </Pressable>
+          </View>
         </View>
       </Screen>
     );
@@ -476,7 +544,35 @@ export default function BidDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    padding: Spacing.lg,
+  },
+  errorTitle: { color: Colors.text, fontSize: 17, fontWeight: "700" },
+  errorBody: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    textAlign: "center",
+  },
+  errorButtons: { flexDirection: "row", gap: Spacing.sm, marginTop: 6 },
+  errorRetry: {
+    backgroundColor: Colors.accent,
+    borderRadius: Radius.md,
+    paddingVertical: 11,
+    paddingHorizontal: 22,
+  },
+  errorRetryText: { color: "#1A1405", fontSize: 15, fontWeight: "700" },
+  errorBack: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingVertical: 11,
+    paddingHorizontal: 22,
+  },
+  errorBackText: { color: Colors.text, fontSize: 15, fontWeight: "600" },
   container: { padding: Spacing.md, gap: Spacing.lg, paddingBottom: 48 },
   statusRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
   statusChip: {

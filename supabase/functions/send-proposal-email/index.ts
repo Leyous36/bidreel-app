@@ -9,6 +9,9 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 // From address must be on a domain verified in Resend (e.g. send.bidreel.io).
 const FROM_ADDRESS = Deno.env.get("RESEND_FROM") ?? "proposals@send.bidreel.io";
+// Per-user cap on outbound proposal emails per rolling 24h — stops a signed-in
+// user turning the verified domain into an unmetered spam relay.
+const DAILY_EMAIL_CAP = Number(Deno.env.get("EMAIL_DAILY_CAP") ?? "50");
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -134,11 +137,74 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { to, proposal, clientName, companyName, replyTo, subject, proposalUrl } = await req.json();
+    const { bidId, to, proposal, clientName, companyName, replyTo, subject, proposalUrl } = await req.json();
     if (!to || !proposal || !clientName) {
       return new Response(
         JSON.stringify({ error: "Missing client email, proposal, or client name." }),
         { status: 400, headers: { ...CORS, "Content-Type": "application/json" } },
+      );
+    }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(to))) {
+      return new Response(
+        JSON.stringify({ error: "Enter a valid client email address." }),
+        { status: 400, headers: { ...CORS, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Service-role client for ownership + rate checks (bypasses RLS).
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+
+    // The proposal being emailed must belong to one of the caller's own bids —
+    // otherwise any signed-in user could send arbitrary content from our domain.
+    if (!bidId) {
+      return new Response(
+        JSON.stringify({ error: "Missing bid reference." }),
+        { status: 400, headers: { ...CORS, "Content-Type": "application/json" } },
+      );
+    }
+    const { data: ownBid, error: bidErr } = await admin
+      .from("bids")
+      .select("id")
+      .eq("id", bidId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (bidErr) {
+      console.error("send-proposal-email bid check:", bidErr.message);
+      return new Response(
+        JSON.stringify({ error: "Couldn't verify the proposal. Try again." }),
+        { status: 500, headers: { ...CORS, "Content-Type": "application/json" } },
+      );
+    }
+    if (!ownBid) {
+      return new Response(
+        JSON.stringify({ error: "You can only email your own proposals." }),
+        { status: 403, headers: { ...CORS, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Rolling-24h per-user send cap.
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count, error: cntErr } = await admin
+      .from("email_log")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", since);
+    if (cntErr) {
+      console.error("send-proposal-email cap check:", cntErr.message);
+      return new Response(
+        JSON.stringify({ error: "Couldn't verify your send limit. Try again." }),
+        { status: 500, headers: { ...CORS, "Content-Type": "application/json" } },
+      );
+    }
+    if ((count ?? 0) >= DAILY_EMAIL_CAP) {
+      return new Response(
+        JSON.stringify({
+          error: `Daily email limit reached (${DAILY_EMAIL_CAP}). Try again tomorrow.`,
+        }),
+        { status: 429, headers: { ...CORS, "Content-Type": "application/json" } },
       );
     }
 
@@ -168,6 +234,14 @@ Deno.serve(async (req) => {
         { status: 502, headers: { ...CORS, "Content-Type": "application/json" } },
       );
     }
+
+    // Record the send so it counts against the cap (best-effort).
+    const { error: logErr } = await admin.from("email_log").insert({
+      user_id: user.id,
+      bid_id: bidId,
+      to_email: to,
+    });
+    if (logErr) console.error("send-proposal-email log insert:", logErr.message);
 
     return new Response(JSON.stringify({ ok: true, id: data?.id }), {
       headers: { ...CORS, "Content-Type": "application/json" },

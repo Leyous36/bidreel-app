@@ -24,10 +24,12 @@ function TierCard({ tier }: { tier: PricingTier }) {
           </View>
         )}
       </View>
-      <Text style={styles.tierTotal}>${tier.total.toLocaleString()}</Text>
+      <Text style={styles.tierTotal}>
+        ${Number(tier.total ?? 0).toLocaleString()}
+      </Text>
       {!!tier.tagline && <Text style={styles.tierTagline}>{tier.tagline}</Text>}
       <View style={styles.tierDivider} />
-      {tier.includes.map((inc, i) => (
+      {(tier.includes ?? []).map((inc, i) => (
         <Text key={i} style={styles.tierInclude}>
           •  {inc}
         </Text>
@@ -47,7 +49,7 @@ export function ProposalView({ proposal }: { proposal: Proposal }) {
       </Section>
 
       <Section title="Scope of Work">
-        {proposal.scope.map((s, i) => (
+        {(proposal.scope ?? []).map((s, i) => (
           <Text key={i} style={styles.bullet}>
             •  {s}
           </Text>
@@ -55,7 +57,7 @@ export function ProposalView({ proposal }: { proposal: Proposal }) {
       </Section>
 
       <Section title="Deliverables">
-        {proposal.deliverables.map((d, i) => (
+        {(proposal.deliverables ?? []).map((d, i) => (
           <Text key={i} style={styles.bullet}>
             •  {d}
           </Text>
@@ -63,7 +65,7 @@ export function ProposalView({ proposal }: { proposal: Proposal }) {
       </Section>
 
       <Section title="Timeline">
-        {proposal.timeline.map((t, i) => (
+        {(proposal.timeline ?? []).map((t, i) => (
           <View key={i} style={styles.timelineRow}>
             <View style={styles.timelineDot} />
             <View style={{ flex: 1 }}>
@@ -89,18 +91,18 @@ export function ProposalView({ proposal }: { proposal: Proposal }) {
           </View>
         ) : proposal.investment ? (
           <View style={styles.investmentCard}>
-            {proposal.investment.breakdown.map((b, i) => (
+            {(proposal.investment.breakdown ?? []).map((b, i) => (
               <View key={i} style={styles.investmentRow}>
                 <Text style={styles.investmentItem}>{b.item}</Text>
                 <Text style={styles.investmentAmount}>
-                  ${b.amount.toLocaleString()}
+                  ${Number(b.amount ?? 0).toLocaleString()}
                 </Text>
               </View>
             ))}
             <View style={[styles.investmentRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total</Text>
               <Text style={styles.totalAmount}>
-                ${proposal.investment.total.toLocaleString()}
+                ${Number(proposal.investment.total ?? 0).toLocaleString()}
               </Text>
             </View>
             <Text style={styles.paymentTerms}>

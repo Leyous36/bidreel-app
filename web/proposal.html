@@ -126,8 +126,12 @@
     return u.searchParams.get("t") || u.searchParams.get("token") || location.hash.replace(/^#/,"") || "";
   }
   var TOKEN = getToken();
-  var PAID = new URL(location.href).searchParams.get("paid") === "1";
+  // Stripe's success_url sends ?paid=1. That is NOT proof of payment (it's
+  // trivially spoofable and can beat the webhook) — it only tells us to poll
+  // the server briefly for the real deposit_status.
+  var JUST_RETURNED = new URL(location.href).searchParams.get("paid") === "1";
   var DATA = null;
+  var confirming = false;
 
   function esc(s){var d=document.createElement("div");d.textContent=s==null?"":String(s);return d.innerHTML;}
   function money(n){return "$"+Number(n||0).toLocaleString();}
@@ -143,7 +147,7 @@
     var html = '';
     html += '<header class="studio">'+logo+'<div><div class="brandname">'+esc(s.name||"Proposal")+'</div>'+
             (s.producer?'<div class="brandsub">'+esc(s.producer)+'</div>':'')+'</div></header>';
-    if(st.accepted || PAID || st.deposit_status==='paid'){ html += '<div class="badge">✓ Accepted</div>'; }
+    if(st.accepted || st.deposit_status==='paid'){ html += '<div class="badge">✓ Accepted</div>'; }
     html += '<div class="preparedfor">Prepared for '+esc(d.client_name||"")+'</div>';
     html += '<h1>'+esc(p.subject||"Video Production Proposal")+'</h1>';
     if(p.overview) html += '<div class="overview">'+esc(p.overview)+'</div>';
@@ -199,13 +203,21 @@
     if(slot) slot.innerHTML = '';
     setBar(null);
 
-    var paid = PAID || st.deposit_status === 'paid';
+    var paid = st.deposit_status === 'paid';
     var hasDeposit = Number(st.deposit_amount_cents||0) >= 100;
 
     if(paid){
       if(slot) slot.innerHTML =
         '<div class="status-box green"><div class="t">✓ Deposit paid — you\'re booked</div>'+
         '<div class="s">Thank you. The studio has been notified and will reach out with next steps.</div></div>';
+      return;
+    }
+    // Returned from Stripe and waiting for the webhook to confirm — show a
+    // neutral "confirming" state, never a paid state we can't yet verify.
+    if(confirming){
+      if(slot) slot.innerHTML =
+        '<div class="status-box"><div class="t">Confirming your payment…</div>'+
+        '<div class="s">This can take a few seconds. You can safely leave — the studio is notified once it clears.</div></div>';
       return;
     }
     if(!st.accepted){
@@ -269,7 +281,12 @@
     if(btn){ btn.disabled=true; btn.textContent='Opening secure checkout…'; }
     api("deposit-checkout", { token:TOKEN })
     .then(function(j){
-      if(j.alreadyPaid){ PAID = true; render(DATA); return; }
+      // alreadyPaid comes from the server (it re-checked Stripe), so it's
+      // authoritative — reflect it in the real state and re-render.
+      if(j.alreadyPaid){
+        if(DATA && DATA.state){ DATA.state.deposit_status = 'paid'; }
+        confirming = false; render(DATA); return;
+      }
       if(j.url){ window.location.href = j.url; return; }
       throw new Error('Could not start checkout');
     })
@@ -295,14 +312,37 @@
       '<div>This link may have been turned off or is incorrect.</div></div>';
   }
 
+  function fetchProposal(){
+    return fetch(SUPABASE_URL+"/functions/v1/proposal-public?token="+encodeURIComponent(TOKEN), {
+      headers: { "apikey": ANON, "Authorization": "Bearer "+ANON }
+    }).then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); });
+  }
+
+  // After a Stripe return, poll a few times for the webhook to mark it paid.
+  function pollForPayment(attempt){
+    if(attempt > 6){ confirming = false; renderActions(); return; } // ~15s, then give up gracefully
+    fetchProposal().then(function(res){
+      if(res.ok && !res.j.error){
+        DATA = res.j;
+        if((res.j.state||{}).deposit_status === 'paid'){ confirming = false; render(DATA); return; }
+      }
+      setTimeout(function(){ pollForPayment(attempt+1); }, 2500);
+    }).catch(function(){ setTimeout(function(){ pollForPayment(attempt+1); }, 2500); });
+  }
+
   function boot(){
     wireModal();
     if(!TOKEN){ fail("Proposal not found"); return; }
-    fetch(SUPABASE_URL+"/functions/v1/proposal-public?token="+encodeURIComponent(TOKEN), {
-      headers: { "apikey": ANON, "Authorization": "Bearer "+ANON }
+    fetchProposal()
+    .then(function(res){
+      if(!res.ok || res.j.error) return fail("Proposal not found");
+      render(res.j);
+      // If we just came back from Stripe and it's not yet paid, confirm with
+      // the server instead of trusting the URL.
+      if(JUST_RETURNED && (res.j.state||{}).deposit_status !== 'paid'){
+        confirming = true; renderActions(); pollForPayment(0);
+      }
     })
-    .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
-    .then(function(res){ if(!res.ok || res.j.error) return fail("Proposal not found"); render(res.j); })
     .catch(function(){ fail("Couldn't load this proposal"); });
   }
   boot();

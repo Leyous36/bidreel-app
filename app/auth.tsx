@@ -5,9 +5,9 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   Pressable,
 } from "react-native";
+import { Alert } from "@/lib/dialog";
 import { useRouter } from "expo-router";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { Button, Field, Screen } from "@/components/ui";
@@ -35,8 +35,18 @@ export default function AuthScreen() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
+        // With email confirmation enabled, signUp returns no session — tell
+        // the user instead of silently bouncing back to this screen.
+        if (!data.session) {
+          Alert.alert(
+            "Check your email",
+            `We sent a confirmation link to ${email}. Tap it, then sign in here.`,
+          );
+          setMode("signin");
+          return;
+        }
         router.replace("/onboarding");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -45,6 +55,31 @@ export default function AuthScreen() {
         });
         if (error) throw error;
       }
+    } catch (e: unknown) {
+      Alert.alert("Error", e instanceof Error ? e.message : "Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleForgotPassword() {
+    if (!email) {
+      Alert.alert(
+        "Enter your email",
+        "Type your email above, then tap “Forgot password?” again.",
+      );
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: "https://bidreel.io/reset-password.html",
+      });
+      if (error) throw error;
+      Alert.alert(
+        "Reset link sent",
+        `Check ${email} for a link to set a new password, then come back and sign in.`,
+      );
     } catch (e: unknown) {
       Alert.alert("Error", e instanceof Error ? e.message : "Try again.");
     } finally {
@@ -95,6 +130,11 @@ export default function AuthScreen() {
                 : "Already have an account? Sign in"}
             </Text>
           </Pressable>
+          {mode === "signin" ? (
+            <Pressable onPress={handleForgotPassword} disabled={busy}>
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </Pressable>
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </Screen>
@@ -126,5 +166,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 14,
     paddingVertical: Spacing.sm,
+  },
+  forgotText: {
+    color: Colors.textSecondary,
+    textAlign: "center",
+    fontSize: 13,
+    textDecorationLine: "underline",
+    paddingVertical: 4,
   },
 });

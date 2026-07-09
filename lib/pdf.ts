@@ -27,11 +27,11 @@ function paragraphs(text: string): string {
 }
 
 function listItems(items: string[]): string {
-  return items.map((i) => `<li>${esc(i)}</li>`).join("");
+  return (items ?? []).map((i) => `<li>${esc(i)}</li>`).join("");
 }
 
 function timelineRows(p: Proposal): string {
-  return p.timeline
+  return (p.timeline ?? [])
     .map(
       (t) => `
       <tr>
@@ -68,7 +68,7 @@ function investmentBlock(p: Proposal): string {
   }
   // Legacy single-investment proposals
   if (p.investment) {
-    const rows = p.investment.breakdown
+    const rows = (p.investment.breakdown ?? [])
       .map(
         (b) =>
           `<tr><td>${esc(b.item)}</td><td class="amt">$${Number(

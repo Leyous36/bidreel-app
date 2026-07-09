@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, View } from "react-native";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { initAnalytics } from "@/lib/analytics";
+import { addNotificationTapListener } from "@/lib/notifications";
 import { Colors } from "@/constants/Colors";
 
 function RootNavigator() {
@@ -20,6 +21,12 @@ function RootNavigator() {
       router.replace("/(tabs)");
     }
   }, [session, loading, segments, router]);
+
+  // Tapping a proposal-activity push opens that proposal (only while signed in).
+  useEffect(() => {
+    if (!session) return;
+    return addNotificationTapListener((bidId) => router.push(`/bid/${bidId}`));
+  }, [session, router]);
 
   if (loading) {
     return (

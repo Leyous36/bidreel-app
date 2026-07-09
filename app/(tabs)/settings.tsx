@@ -3,19 +3,19 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Alert,
   View,
   Pressable,
   Image,
   ActivityIndicator,
 } from "react-native";
+import { Alert } from "@/lib/dialog";
 import { useRouter } from "expo-router";
 import * as Linking from "expo-linking";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { restorePurchases } from "@/lib/revenue-cat";
-import { deleteAccount, connectStripe } from "@/lib/ai";
+import { deleteAccount, connectStripe } from "@/lib/account";
 import { uploadStudioLogo } from "@/lib/branding";
 import { Button, Field, Screen } from "@/components/ui";
 import { Colors, Radius, Spacing } from "@/constants/Colors";
@@ -321,7 +321,7 @@ export default function SettingsScreen() {
           </Text>
         </Pressable>
         <Text style={styles.deleteHint}>
-          Permanently deletes your account and all proposals. This can't be undone.
+          Permanently deletes your account and all proposals. This can&apos;t be undone.
         </Text>
       </ScrollView>
     </Screen>

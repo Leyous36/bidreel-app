@@ -67,3 +67,27 @@ export async function registerForPushNotificationsAsync(
 export function clearPushRegistration() {
   lastRegisteredFor = null;
 }
+
+/**
+ * Routes a tapped notification to its bid. The Edge Functions attach
+ * { bidId } to each push (see _shared/push.ts), so opening "…accepted your
+ * proposal" lands on that proposal instead of the app root. Call once from the
+ * root layout; returns an unsubscribe fn. No-op on web.
+ */
+export function addNotificationTapListener(
+  onBid: (bidId: string) => void,
+): () => void {
+  if (Platform.OS === "web") return () => {};
+
+  const route = (resp: Notifications.NotificationResponse | null) => {
+    const data = resp?.notification?.request?.content?.data as
+      | { bidId?: string }
+      | undefined;
+    if (data?.bidId) onBid(String(data.bidId));
+  };
+
+  // Handle a tap that launched the app from a cold start, too.
+  Notifications.getLastNotificationResponseAsync().then(route);
+  const sub = Notifications.addNotificationResponseReceivedListener(route);
+  return () => sub.remove();
+}

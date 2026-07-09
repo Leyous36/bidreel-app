@@ -14,11 +14,12 @@ import { supabase } from "@/lib/supabase";
 import { Bid, BidStatus, proposalValue } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ShareButton } from "@/components/ShareButton";
+import { ErrorBanner } from "@/components/ErrorBanner";
 import { Screen } from "@/components/ui";
 import { Colors, Radius, Spacing } from "@/constants/Colors";
 import { getTemplate } from "@/lib/templates";
 
-const FILTERS: Array<{ key: BidStatus | "all"; label: string }> = [
+const FILTERS: { key: BidStatus | "all"; label: string }[] = [
   { key: "all", label: "All" },
   { key: "won", label: "Won" },
   { key: "pending", label: "Pending" },
@@ -31,14 +32,20 @@ export default function BidsScreen() {
   const [bids, setBids] = useState<Bid[]>([]);
   const [filter, setFilter] = useState<BidStatus | "all">("all");
   const [search, setSearch] = useState("");
+  const [loadError, setLoadError] = useState(false);
   const router = useRouter();
 
   const load = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("bids")
       .select("*")
       .order("created_at", { ascending: false });
-    if (data) setBids(data as Bid[]);
+    if (error) {
+      setLoadError(true);
+    } else {
+      setBids(data as Bid[]);
+      setLoadError(false);
+    }
   }, []);
 
   useFocusEffect(
@@ -90,6 +97,7 @@ export default function BidsScreen() {
           ))}
         </ScrollView>
       </View>
+      {loadError ? <ErrorBanner onRetry={load} /> : null}
       <FlatList
         data={visible}
         keyExtractor={(b) => b.id}
