@@ -82,7 +82,19 @@ export async function generateProposal(
   );
 
   if (error) {
-    throw new Error(error.message || "Proposal generation failed");
+    // On a non-2xx, supabase-js gives a generic message; the real reason (e.g.
+    // the server-enforced free-plan limit) is in the response body.
+    let message = error.message || "Proposal generation failed";
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.clone === "function") {
+      try {
+        const body = await ctx.clone().json();
+        if (body?.error) message = body.error;
+      } catch {
+        // keep the generic message
+      }
+    }
+    throw new Error(message);
   }
   if (!data || (data as unknown as { error?: string }).error) {
     throw new Error(

@@ -1,14 +1,20 @@
-// BidReel — Stripe webhook. Verifies the signature, then on a completed
-// checkout marks the payment paid, sets the bid's deposit_status='paid', and
-// flips the bid to "won". Idempotent via the unique provider_session_id.
+// BidReel — Stripe webhook. Verifies the signature, then converges local state
+// with what Stripe says happened. Idempotent via the unique
+// provider_session_id and transition-gated updates in _shared/stripe-sync.ts.
+//
+// Any DB failure returns 500 so Stripe RETRIES — a transient outage must never
+// silently drop a real payment. Handles delayed payment methods
+// (async_payment_*) and expired sessions, and only ever marks paid when
+// Stripe reports payment_status === "paid".
 //
 // Deploy:  supabase functions deploy stripe-webhook --no-verify-jwt
 // Secrets: supabase secrets set STRIPE_SECRET_KEY=sk_live_... STRIPE_WEBHOOK_SECRET=whsec_...
-// Then add the function URL as an endpoint in the Stripe Dashboard
-// (event: checkout.session.completed) and paste the signing secret above.
+// Stripe Dashboard endpoint events: checkout.session.completed,
+//   checkout.session.async_payment_succeeded,
+//   checkout.session.async_payment_failed, checkout.session.expired
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@17.7.0";
-import { pushToProducer } from "../_shared/push.ts";
+import { applyPaidSession, markSessionFailed } from "../_shared/stripe-sync.ts";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
   apiVersion: "2024-06-20",
@@ -47,48 +53,39 @@ Deno.serve(async (req) => {
   );
 
   try {
-    if (event.type === "checkout.session.completed") {
-      const s = event.data.object as Stripe.Checkout.Session;
-
-      // Idempotent: only the first completion flips status from non-paid → paid.
-      const { data: pay } = await admin
-        .from("payments")
-        .update({
-          status: "paid",
-          provider_payment_id:
-            typeof s.payment_intent === "string" ? s.payment_intent : null,
-        })
-        .eq("provider_session_id", s.id)
-        .neq("status", "paid")
-        .select("bid_id, amount_cents, user_id")
-        .maybeSingle();
-
-      if (pay) {
-        const { data: bidRow } = await admin
-          .from("bids")
-          .update({ deposit_status: "paid", status: "won" })
-          .eq("id", pay.bid_id)
-          .select("client_name")
-          .maybeSingle();
-        await admin.from("bid_events").insert({
-          bid_id: pay.bid_id,
-          type: "deposit_paid",
-          metadata: { amount_cents: pay.amount_cents },
-        });
-        const amt = Math.round((pay.amount_cents ?? 0) / 100).toLocaleString();
-        await pushToProducer(
-          admin,
-          pay.user_id,
-          "Deposit paid 🎉",
-          `${bidRow?.client_name ?? "A client"} paid a $${amt} deposit — you're booked`,
-          { bidId: pay.bid_id },
-        );
+    switch (event.type) {
+      // "completed" fires for card payments with payment_status="paid", and
+      // for delayed methods with payment_status="unpaid" — applyPaidSession
+      // only acts on "paid", so the unpaid case waits for async_payment_*.
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
+        const s = event.data.object as Stripe.Checkout.Session;
+        const res = await applyPaidSession(admin, s);
+        if (!res.ok) {
+          console.error("stripe-webhook apply failed:", res.error);
+          return new Response("Temporary failure, retry", { status: 500 });
+        }
+        break;
       }
+      case "checkout.session.async_payment_failed":
+      case "checkout.session.expired": {
+        const s = event.data.object as Stripe.Checkout.Session;
+        const res = await markSessionFailed(admin, s.id);
+        if (!res.ok) {
+          console.error("stripe-webhook mark-failed failed:", res.error);
+          return new Response("Temporary failure, retry", { status: 500 });
+        }
+        break;
+      }
+      default:
+        break; // unrecognized events are acknowledged, not errors
     }
+
     return new Response(JSON.stringify({ received: true }), {
       headers: { "Content-Type": "application/json" },
     });
   } catch (e) {
+    console.error("stripe-webhook handler error:", e);
     return new Response(
       `Handler error: ${e instanceof Error ? e.message : "error"}`,
       { status: 500 },

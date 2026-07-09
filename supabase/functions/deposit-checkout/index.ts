@@ -4,10 +4,18 @@
 // If the studio has connected a Stripe account, the money is routed straight to
 // them (destination charge, no platform fee at launch).
 //
+// Hardening (0007): reuses an existing open Checkout Session instead of
+// minting a new one per tap (closes the two-tabs double-charge window), aborts
+// if the payments row can't be recorded (expiring the just-created session so
+// nothing stays payable without a record), converges state inline when the
+// session already got paid but the webhook was lost, and returns only generic
+// error strings to the public caller.
+//
 // Deploy:  supabase functions deploy deposit-checkout --no-verify-jwt
 // Secrets: supabase secrets set STRIPE_SECRET_KEY=sk_live_...
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@17.7.0";
+import { applyPaidSession, markSessionFailed } from "../_shared/stripe-sync.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -65,6 +73,48 @@ Deno.serve(async (req) => {
     }
     const currency = (bid.currency ?? "usd").toLowerCase();
 
+    // Reuse the most recent unfinished session for this bid instead of minting
+    // a new payable session on every tap/tab.
+    const { data: openPay, error: openErr } = await admin
+      .from("payments")
+      .select("provider_session_id")
+      .eq("bid_id", bid.id)
+      .eq("status", "created")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (openErr) {
+      console.error("deposit-checkout payments lookup:", openErr.message);
+      return json({ error: "Couldn't start checkout. Please try again." }, 500);
+    }
+    if (openPay?.provider_session_id) {
+      try {
+        const prior = await stripe.checkout.sessions.retrieve(
+          openPay.provider_session_id,
+        );
+        if (prior.status === "open" && prior.url) {
+          return json({ url: prior.url });
+        }
+        if (prior.status === "complete" && prior.payment_status === "paid") {
+          // Paid but the webhook never landed — converge now.
+          const res = await applyPaidSession(admin, prior);
+          if (!res.ok) {
+            console.error("deposit-checkout inline converge:", res.error);
+            return json(
+              { error: "Couldn't start checkout. Please try again." },
+              500,
+            );
+          }
+          return json({ alreadyPaid: true });
+        }
+        // Expired or otherwise dead — record it and fall through to a new one.
+        await markSessionFailed(admin, openPay.provider_session_id);
+      } catch (e) {
+        // Session unknown to Stripe (test/live mix etc.) — don't block payment.
+        console.error("deposit-checkout session retrieve:", e);
+      }
+    }
+
     // Route to the studio's connected account if they've onboarded.
     const { data: studio } = await admin
       .from("profiles")
@@ -93,10 +143,16 @@ Deno.serve(async (req) => {
         : undefined,
       success_url: `${PUBLIC_BASE}${token}?paid=1`,
       cancel_url: `${PUBLIC_BASE}${token}`,
-      metadata: { bid_id: bid.id, token },
+      // 30-minute window; the webhook's checkout.session.expired handler (and
+      // the reuse logic above) then retires it. bid_id only — the share_token
+      // is a bearer secret and doesn't belong in a third-party dashboard.
+      expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+      metadata: { bid_id: bid.id },
     });
 
-    await admin.from("payments").insert({
+    // The payments row is the webhook's anchor — if we can't record it, kill
+    // the session so nothing stays payable without a record.
+    const { error: insErr } = await admin.from("payments").insert({
       bid_id: bid.id,
       user_id: bid.user_id,
       provider_session_id: session.id,
@@ -104,18 +160,34 @@ Deno.serve(async (req) => {
       currency,
       status: "created",
     });
-    await admin
+    if (insErr) {
+      console.error("deposit-checkout payments insert:", insErr.message);
+      try {
+        await stripe.checkout.sessions.expire(session.id);
+      } catch (e) {
+        console.error("deposit-checkout session expire:", e);
+      }
+      return json({ error: "Couldn't start checkout. Please try again." }, 500);
+    }
+
+    // Best-effort bookkeeping — a failure here shouldn't block the payment,
+    // but it must be visible in the logs.
+    const { error: bidErr } = await admin
       .from("bids")
       .update({ deposit_status: "requested" })
-      .eq("id", bid.id);
-    await admin.from("bid_events").insert({
+      .eq("id", bid.id)
+      .neq("deposit_status", "paid");
+    if (bidErr) console.error("deposit-checkout bid update:", bidErr.message);
+    const { error: evErr } = await admin.from("bid_events").insert({
       bid_id: bid.id,
       type: "deposit_requested",
       metadata: { amount_cents: amount },
     });
+    if (evErr) console.error("deposit-checkout event insert:", evErr.message);
 
     return json({ url: session.url });
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : "Failed" }, 500);
+    console.error("deposit-checkout error:", e);
+    return json({ error: "Couldn't start checkout. Please try again." }, 500);
   }
 });

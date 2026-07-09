@@ -82,9 +82,8 @@ export default function CreateBidScreen() {
         .single();
       if (error) throw error;
 
-      await supabase.rpc("increment_proposal_count", {
-        uid: session.user.id,
-      });
+      // The monthly count is claimed server-side by generate-proposal (0007);
+      // refreshing the profile pulls the updated number for the quota banner.
       await refreshProfile();
 
       track("proposal_generated", {

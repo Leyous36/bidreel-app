@@ -8,6 +8,12 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 
+// Server-side source of truth for the free-tier cap. The app shows the same
+// number (lib/types.ts FREE_PROPOSALS_PER_MONTH) for UX, but THIS check is the
+// one that counts — the client one can be bypassed by calling the function
+// directly.
+const FREE_PROPOSALS_PER_MONTH = 3;
+
 // Primary model writes the proposal; if it's ever unavailable we fall back to
 // Haiku so generation never hard-fails. Change PRIMARY_MODEL in one place here.
 const PRIMARY_MODEL = "claude-sonnet-4-6";
@@ -189,6 +195,60 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Enforce the free-tier quota HERE, not just in the app. The claim is a
+    // single conditional UPDATE (claim_free_proposal, service-role-only), so
+    // parallel requests can't sneak past the cap; if generation fails after a
+    // successful claim, the slot is refunded below.
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+    const { data: prof, error: profErr } = await admin
+      .from("profiles")
+      .select("subscription_tier")
+      .eq("id", user.id)
+      .single();
+    if (profErr) {
+      console.error("generate-proposal profile read:", profErr.message);
+      return new Response(
+        JSON.stringify({ error: "Couldn't verify your plan. Try again." }),
+        { status: 500, headers: { ...CORS, "Content-Type": "application/json" } },
+      );
+    }
+    const tier = prof?.subscription_tier ?? "free";
+    let claimedFreeSlot = false;
+    if (tier === "free") {
+      const { data: claimed, error: claimErr } = await admin.rpc(
+        "claim_free_proposal",
+        { p_uid: user.id, p_cap: FREE_PROPOSALS_PER_MONTH },
+      );
+      if (claimErr) {
+        console.error("generate-proposal quota claim:", claimErr.message);
+        return new Response(
+          JSON.stringify({ error: "Couldn't verify your plan. Try again." }),
+          { status: 500, headers: { ...CORS, "Content-Type": "application/json" } },
+        );
+      }
+      if (!claimed) {
+        return new Response(
+          JSON.stringify({
+            error:
+              `Free plan limit reached (${FREE_PROPOSALS_PER_MONTH} proposals/month). Upgrade to keep going.`,
+            code: "quota_exceeded",
+          }),
+          { status: 402, headers: { ...CORS, "Content-Type": "application/json" } },
+        );
+      }
+      claimedFreeSlot = true;
+    }
+    const refundClaim = async () => {
+      if (!claimedFreeSlot) return;
+      const { error } = await admin.rpc("refund_free_proposal", {
+        p_uid: user.id,
+      });
+      if (error) console.error("generate-proposal refund:", error.message);
+    };
+
     // Default to AmeriFilms context (this is Souley's app). Only switch to the
     // generic, no-fabrication context if a clearly different studio is named.
     const isAmerifilms =
@@ -209,30 +269,37 @@ Deno.serve(async (req) => {
 
     // Try the primary model; fall back to Haiku only if it looks like a model
     // availability problem (so a real API/key error still surfaces clearly).
-    let { resp, data } = await callAnthropic(PRIMARY_MODEL, system, userContent);
-    if (!resp.ok && looksLikeModelError(data)) {
-      ({ resp, data } = await callAnthropic(FALLBACK_MODEL, system, userContent));
+    // Any failure past this point gives the claimed free slot back.
+    try {
+      let { resp, data } = await callAnthropic(PRIMARY_MODEL, system, userContent);
+      if (!resp.ok && looksLikeModelError(data)) {
+        ({ resp, data } = await callAnthropic(FALLBACK_MODEL, system, userContent));
+      }
+
+      if (!resp.ok) {
+        console.error("Anthropic error:", JSON.stringify(data));
+        await refundClaim();
+        return new Response(
+          JSON.stringify({ error: "AI generation failed. Try again." }),
+          { status: 502, headers: { ...CORS, "Content-Type": "application/json" } },
+        );
+      }
+
+      const text: string = data.content?.[0]?.text || "";
+      // Be tolerant of stray prose or code fences around the JSON.
+      const clean = text.replace(/```json|```/g, "").trim();
+      const start = clean.indexOf("{");
+      const end = clean.lastIndexOf("}");
+      const jsonStr = start >= 0 && end >= 0 ? clean.slice(start, end + 1) : clean;
+      const proposal = JSON.parse(jsonStr);
+
+      return new Response(JSON.stringify(proposal), {
+        headers: { ...CORS, "Content-Type": "application/json" },
+      });
+    } catch (genErr) {
+      await refundClaim();
+      throw genErr;
     }
-
-    if (!resp.ok) {
-      console.error("Anthropic error:", JSON.stringify(data));
-      return new Response(
-        JSON.stringify({ error: "AI generation failed. Try again." }),
-        { status: 502, headers: { ...CORS, "Content-Type": "application/json" } },
-      );
-    }
-
-    const text: string = data.content?.[0]?.text || "";
-    // Be tolerant of stray prose or code fences around the JSON.
-    const clean = text.replace(/```json|```/g, "").trim();
-    const start = clean.indexOf("{");
-    const end = clean.lastIndexOf("}");
-    const jsonStr = start >= 0 && end >= 0 ? clean.slice(start, end + 1) : clean;
-    const proposal = JSON.parse(jsonStr);
-
-    return new Response(JSON.stringify(proposal), {
-      headers: { ...CORS, "Content-Type": "application/json" },
-    });
   } catch (err) {
     console.error(err);
     return new Response(

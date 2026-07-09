@@ -2,11 +2,9 @@ import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, Alert, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { purchaseProduct, restorePurchases } from "@/lib/revenue-cat";
 import { track } from "@/lib/analytics";
-import { SubscriptionTier } from "@/lib/types";
 import { Button, Screen } from "@/components/ui";
 import { Colors, Radius, Spacing } from "@/constants/Colors";
 
@@ -42,7 +40,7 @@ const TIERS = [
 ];
 
 export default function PaywallScreen() {
-  const { session, refreshProfile } = useAuth();
+  const { refreshProfile } = useAuth();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -50,21 +48,15 @@ export default function PaywallScreen() {
     track("paywall_viewed");
   }, []);
 
-  async function applyTier(tier: SubscriptionTier) {
-    if (session && tier && tier !== "free") {
-      await supabase
-        .from("profiles")
-        .update({ subscription_tier: tier })
-        .eq("id", session.user.id);
-    }
-    await refreshProfile();
-  }
-
+  // The DB tier is written ONLY server-side (rc-webhook on RevenueCat events;
+  // clients are blocked from that column since migration 0007). Refreshing the
+  // profile is enough for instant UX: auth-context merges the live RevenueCat
+  // entitlement on top of the DB value.
   async function handlePurchase(productId: string) {
     try {
       setBusy(productId);
       const tier = await purchaseProduct(productId);
-      await applyTier(tier);
+      await refreshProfile();
       track("purchase_completed", { product: productId, tier });
       Alert.alert("You're in", "Your subscription is active. Enjoy BidReel.");
       router.back();
@@ -87,7 +79,7 @@ export default function PaywallScreen() {
       setBusy("restore");
       const tier = await restorePurchases();
       if (tier && tier !== "free") {
-        await applyTier(tier);
+        await refreshProfile();
         Alert.alert("Restored", "Your subscription has been restored.");
         router.back();
       } else {
