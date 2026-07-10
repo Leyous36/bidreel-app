@@ -56,10 +56,12 @@ export default function InsightsScreen() {
     .reduce((s, b) => s + amountOf(b), 0);
 
   const sent = bids.filter((b) => b.status !== "draft");
+  // Keep the status fallback in sync with the dashboard's open-pipeline
+  // buckets — "pending" (awaiting deposit) implies the client opened it.
   const viewed = bids.filter(
     (b) =>
       !!b.first_viewed_at ||
-      ["viewed", "accepted", "won"].includes(b.status),
+      ["viewed", "accepted", "pending", "won"].includes(b.status),
   );
   const openRate = sent.length
     ? Math.round((viewed.length / sent.length) * 100)
@@ -175,7 +177,7 @@ export default function InsightsScreen() {
 
             <Section title="Win Rate by Template">
               {byTemplate.length === 0 ? (
-                <Text style={text.muted}>No decided bids yet.</Text>
+                <Text style={text.muted}>No decided proposals yet.</Text>
               ) : (
                 <View style={{ gap: 12 }}>
                   {byTemplate.map((t) => (
@@ -184,7 +186,7 @@ export default function InsightsScreen() {
                         <Text style={styles.tplName}>{t.name}</Text>
                         <Text style={styles.funnelN}>
                           {t.winRate === null ? "—" : `${t.winRate}%`}
-                          <Text style={text.muted}>  ·  {t.count} bid{t.count === 1 ? "" : "s"}</Text>
+                          <Text style={text.muted}>  ·  {t.count} proposal{t.count === 1 ? "" : "s"}</Text>
                         </Text>
                       </View>
                       <View style={styles.track}>

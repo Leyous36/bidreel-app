@@ -71,7 +71,7 @@ const NUDGE_SUB: Record<string, string> = {
   accepted: "Send the payment link to lock it in",
   opened: "They're interested — reply while it's warm",
   sent: "Nudge them with a friendly follow-up",
-  stale: "Open the bid and tap Draft Follow-up — AI writes the nudge",
+  stale: "Open the proposal and use Draft follow-up — AI writes the nudge",
 };
 
 /** Proposals with no movement in this many days count as "gone quiet". */
@@ -280,7 +280,7 @@ export default function DashboardScreen() {
             {!firstRun && (
             <View style={styles.metrics}>
               <StatCard
-                label="Total bids"
+                label="Total proposals"
                 value={String(scoped.length)}
                 delta={newThisWeek > 0 ? `+${newThisWeek} this wk` : null}
               >
@@ -328,7 +328,7 @@ export default function DashboardScreen() {
                 <View style={styles.panelHead}>
                   <Text style={text.label}>Pipeline by stage</Text>
                   <Text style={text.muted}>
-                    {stageTotal} bid{stageTotal === 1 ? "" : "s"}
+                    {stageTotal} proposal{stageTotal === 1 ? "" : "s"}
                   </Text>
                 </View>
                 <View style={styles.legend}>
@@ -379,7 +379,7 @@ export default function DashboardScreen() {
 
             {!firstRun && (
               <View style={styles.recentHead}>
-                <Text style={text.label}>Recent bids</Text>
+                <Text style={text.label}>Recent proposals</Text>
                 <Button
                   title="View all"
                   variant="ghost"
@@ -395,7 +395,7 @@ export default function DashboardScreen() {
           ) : (
             <EmptyState
               message="Generate your first client-ready proposal in under 60 seconds."
-              actionLabel="New bid"
+              actionLabel="New proposal"
               onAction={() => router.push("/(tabs)/create")}
             />
           )

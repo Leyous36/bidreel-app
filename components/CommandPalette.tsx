@@ -106,7 +106,7 @@ export function CommandPalette() {
     const nav: Command[] = [
       {
         id: "new-bid",
-        label: "New bid",
+        label: "New proposal",
         hint: "Create",
         icon: <Plus {...ICON} />,
         run: () => go("/(tabs)/create"),
@@ -119,7 +119,7 @@ export function CommandPalette() {
       },
       {
         id: "bids",
-        label: "Go to Bids",
+        label: "Go to Proposals",
         icon: <FileText {...ICON} />,
         run: () => go("/(tabs)/bids"),
       },
@@ -165,7 +165,7 @@ export function CommandPalette() {
           ref={inputRef}
           value={query}
           onChangeText={setQuery}
-          placeholder="Type a command or search bids"
+          placeholder="Type a command or search proposals"
           placeholderTextColor={Colors.textMuted}
           style={[styles.input, { outlineStyle: "none" } as object]}
           onSubmitEditing={onSubmit}

@@ -21,7 +21,7 @@ import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
 
 const NAV = [
   { path: "/", label: "Dashboard", Icon: LayoutGrid },
-  { path: "/bids", label: "Bids", Icon: FileText },
+  { path: "/bids", label: "Proposals", Icon: FileText },
   { path: "/insights", label: "Insights", Icon: BarChart3 },
   { path: "/settings", label: "Settings", Icon: Settings },
 ] as const;
@@ -148,7 +148,7 @@ function NewBidButton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="New bid"
+      accessibilityLabel="New proposal"
       onPress={onPress}
       {...handlers}
       style={[
@@ -159,7 +159,7 @@ function NewBidButton({
       ]}
     >
       <Plus size={16} color="#FFFFFF" strokeWidth={1.75} />
-      {!collapsed && <Text style={styles.newBidLabel}>New bid</Text>}
+      {!collapsed && <Text style={styles.newBidLabel}>New proposal</Text>}
     </Pressable>
   );
 }

@@ -27,7 +27,7 @@ export function ShareButton({
 
   async function handleShare() {
     if (!bid.proposal) {
-      Alert.alert("Nothing to share yet", "Generate a proposal for this bid first.");
+      Alert.alert("Nothing to share yet", "Generate this proposal first.");
       return;
     }
     setSharing(true);

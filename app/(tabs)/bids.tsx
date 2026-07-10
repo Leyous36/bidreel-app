@@ -38,7 +38,7 @@ const FILTERS: { key: BidStatus | "all"; label: string }[] = [
   { key: "sent", label: "Sent" },
   { key: "viewed", label: "Viewed" },
   { key: "accepted", label: "Accepted" },
-  { key: "pending", label: "Pending" },
+  { key: "pending", label: "Awaiting deposit" },
   { key: "won", label: "Won" },
   { key: "lost", label: "Lost" },
 ];
@@ -120,7 +120,7 @@ export default function BidsScreen() {
   ) : bids.length === 0 ? (
     <EmptyState
       message="No proposals yet — generate your first client-ready proposal."
-      actionLabel="New bid"
+      actionLabel="New proposal"
       onAction={() => router.push("/(tabs)/create")}
     />
   ) : (
@@ -134,10 +134,10 @@ export default function BidsScreen() {
   return (
     <Screen>
       <PageHeader
-        title="Bids"
+        title="Proposals"
         action={
           <Button
-            title="New bid"
+            title="New proposal"
             onPress={() => router.push("/(tabs)/create")}
           />
         }

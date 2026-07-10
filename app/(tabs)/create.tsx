@@ -113,7 +113,7 @@ export default function CreateBidScreen() {
   if (!template) {
     return (
       <Screen>
-        <PageHeader title="New bid" />
+        <PageHeader title="New proposal" />
         <ScrollView contentContainerStyle={styles.container}>
           <View style={styles.intro}>
             <Text style={text.label}>Choose a template</Text>
@@ -141,7 +141,7 @@ export default function CreateBidScreen() {
 
   return (
     <Screen>
-      <PageHeader title="New bid" />
+      <PageHeader title="New proposal" />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}

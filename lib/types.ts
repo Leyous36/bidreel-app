@@ -147,7 +147,9 @@ export const STATUS_LABELS: Record<BidStatus, string> = {
   sent: "Sent",
   viewed: "Viewed",
   accepted: "Accepted",
-  pending: "Pending",
+  // "Pending" was ambiguous next to Accepted — both meant "client said yes,
+  // money not in". Label states what's actually being waited on.
+  pending: "Awaiting deposit",
   won: "Won",
   lost: "Lost",
 };

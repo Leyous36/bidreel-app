@@ -50,14 +50,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="create"
         options={{
-          title: "New Bid",
+          title: "New Proposal",
           tabBarIcon: ({ color }) => <Plus {...ICON_PROPS} color={color} />,
         }}
       />
       <Tabs.Screen
         name="bids"
         options={{
-          title: "Bids",
+          title: "Proposals",
           tabBarIcon: ({ color }) => <FileText {...ICON_PROPS} color={color} />,
         }}
       />

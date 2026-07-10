@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Pressable,
   ActivityIndicator,
   Share,
   Modal,
@@ -21,9 +20,10 @@ import { proposalToText, shareProposal, generateFollowup } from "@/lib/ai";
 import { exportProposalPdf } from "@/lib/pdf";
 import { sendProposalEmail } from "@/lib/email";
 import { track } from "@/lib/analytics";
-import { Bid, BidEvent, BidStatus, STATUS_LABELS } from "@/lib/types";
+import { Bid, BidEvent, BidStatus } from "@/lib/types";
 import { ProposalView } from "@/components/ProposalView";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
+import { StatusBadge } from "@/components/StatusBadge";
 import {
   Screen,
   Button,
@@ -33,8 +33,6 @@ import {
   EmptyState,
   OverflowMenu,
   MenuItem,
-  useInteractive,
-  focusRing,
   text,
 } from "@/components/ui";
 import {
@@ -46,15 +44,10 @@ import {
   Type,
 } from "@/constants/Colors";
 
-const STATUS_OPTIONS: BidStatus[] = [
-  "draft",
-  "sent",
-  "viewed",
-  "accepted",
-  "pending",
-  "won",
-  "lost",
-];
+// Sent/Viewed/Accepted/deposit are set automatically by the trackable link —
+// letting a human hand-pick them would corrupt the tracking signal. People
+// only decide outcomes: won, lost, or back to draft.
+const DECIDED: BidStatus[] = ["won", "lost"];
 
 // Keep in sync with the edge functions' PUBLIC_PROPOSAL_BASE. share-proposal
 // returns the canonical URL directly; this is only used to rebuild the link
@@ -62,35 +55,6 @@ const STATUS_OPTIONS: BidStatus[] = [
 const PUBLIC_BASE =
   process.env.EXPO_PUBLIC_SHARE_BASE_URL ?? "https://bidreel.io/p/";
 
-function StatusChip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  const { hovered, focused, handlers } = useInteractive();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      {...handlers}
-      style={({ pressed }) => [
-        styles.statusChip,
-        active
-          ? { backgroundColor: Colors.accentMuted }
-          : (hovered || pressed) && { backgroundColor: Colors.surfaceHover },
-        focusRing(focused),
-      ]}
-    >
-      <Text style={[styles.statusChipText, active && { color: Colors.text }]}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
 
 export default function BidDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -137,7 +101,12 @@ export default function BidDetailScreen() {
     }, [load]),
   );
 
-  async function setStatus(status: BidStatus) {
+  // Humans set outcomes (draft/won/lost). "sent" is allowed only because
+  // sharing or emailing a draft advances it programmatically — viewed and
+  // accepted stay exclusively link/webhook-driven.
+  async function setStatus(
+    status: Extract<BidStatus, "draft" | "sent" | "won" | "lost">,
+  ) {
     if (!bid) return;
     const prev = bid.status;
     Haptics.selectionAsync();
@@ -314,7 +283,10 @@ export default function BidDetailScreen() {
 
   async function deleteBid() {
     if (!bid) return;
-    Alert.alert("Delete bid?", `This removes the ${bid.client_name} proposal.`, [
+    Alert.alert(
+      "Delete proposal?",
+      `This removes the ${bid.client_name} proposal.`,
+      [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
@@ -386,10 +358,22 @@ export default function BidDetailScreen() {
     );
   }
 
+  const decided = DECIDED.includes(bid.status);
   const menuItems: MenuItem[] = [
     ...(bid.share_token ? [{ label: "Copy link", onPress: copyLink }] : []),
     { label: "Copy text", onPress: copyProposal },
     { label: "Export PDF", onPress: exportPdf },
+    // Once decided, the reverse transitions move here so the default view
+    // isn't cluttered with second-guessing controls.
+    ...(decided
+      ? [
+          {
+            label: bid.status === "won" ? "Mark as lost" : "Mark as won",
+            onPress: () => setStatus(bid.status === "won" ? "lost" : "won"),
+          },
+          { label: "Revert to draft", onPress: () => setStatus("draft") },
+        ]
+      : []),
     { label: "Delete", onPress: deleteBid, danger: true },
   ];
 
@@ -397,17 +381,6 @@ export default function BidDetailScreen() {
     <Screen>
       {topBar}
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.statusRow}>
-          {STATUS_OPTIONS.map((s) => (
-            <StatusChip
-              key={s}
-              label={STATUS_LABELS[s]}
-              active={bid.status === s}
-              onPress={() => setStatus(s)}
-            />
-          ))}
-        </View>
-
         <View style={styles.actionsRow}>
           <Button
             title={bid.share_token ? "Share link" : "Share proposal"}
@@ -430,6 +403,30 @@ export default function BidDetailScreen() {
           <View style={styles.actionsSpacer} />
           {exporting ? <Text style={text.muted}>Exporting PDF…</Text> : null}
           <OverflowMenu items={menuItems} />
+        </View>
+
+        <View style={styles.statusRow}>
+          <StatusBadge status={bid.status} />
+          <Text style={text.muted}>
+            {decided
+              ? "Tracking has ended for this proposal."
+              : "Sent, viewed and accepted update automatically from your link."}
+          </Text>
+          {!decided && (
+            <>
+              <View style={styles.actionsSpacer} />
+              <Button
+                title="Mark won"
+                variant="secondary"
+                onPress={() => setStatus("won")}
+              />
+              <Button
+                title="Mark lost"
+                variant="danger"
+                onPress={() => setStatus("lost")}
+              />
+            </>
+          )}
         </View>
 
         {bid.share_token ? (
@@ -464,7 +461,7 @@ export default function BidDetailScreen() {
         {bid.proposal ? (
           <ProposalView proposal={bid.proposal} />
         ) : (
-          <EmptyState message="No proposal was generated for this bid." />
+          <EmptyState message="No proposal was generated yet." />
         )}
 
         {bid.share_token ? <ActivityTimeline events={events} /> : null}
@@ -575,20 +572,12 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xxl,
     gap: Spacing.lg,
   },
-  statusRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.xs },
-  statusChip: {
-    height: 28,
-    paddingHorizontal: Spacing.sm,
-    borderRadius: Radius.md,
+  statusRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
-    justifyContent: "center",
-  },
-  statusChipText: {
-    fontFamily: Fonts.medium,
-    fontSize: Type.ui,
-    lineHeight: Math.round(Type.ui * 1.4),
-    letterSpacing: Type.trackUi,
-    color: Colors.textSecondary,
+    gap: Spacing.sm,
+    minHeight: 32,
   },
   actionsRow: {
     flexDirection: "row",
