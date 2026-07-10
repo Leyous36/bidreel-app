@@ -4,9 +4,13 @@ import {
   StyleSheet,
   ScrollView,
   View,
+  Platform,
   Pressable,
   Image,
+  TextInput,
+  TextStyle,
 } from "react-native";
+import { Lock } from "lucide-react-native";
 import { Alert } from "@/lib/dialog";
 import { useRouter } from "expo-router";
 import * as Linking from "expo-linking";
@@ -42,6 +46,20 @@ const BRAND_SWATCHES = [
 ];
 const DEPOSIT_OPTIONS = [0, 25, 50, 75];
 
+/** "#1A73E8", "1a73e8", or "#F5B" → normalized "#RRGGBB"; null if not a hex color. */
+function parseHex(input: string): string | null {
+  let s = input.trim();
+  if (!s.startsWith("#")) s = `#${s}`;
+  if (/^#[0-9a-fA-F]{3}$/.test(s)) {
+    s = `#${s
+      .slice(1)
+      .split("")
+      .map((c) => c + c)
+      .join("")}`;
+  }
+  return /^#[0-9a-fA-F]{6}$/.test(s) ? s.toUpperCase() : null;
+}
+
 function Swatch({
   color,
   selected,
@@ -68,6 +86,28 @@ function Swatch({
         pressed && { opacity: 0.8 },
       ]}
     />
+  );
+}
+
+/** Locked custom-color row shown on the free plan; opens the paywall. */
+function CustomColorUpsell({ onPress }: { onPress: () => void }) {
+  const { hovered, focused, handlers } = useInteractive();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Custom brand color — included with Pro"
+      onPress={onPress}
+      {...handlers}
+      style={[
+        styles.customRow,
+        styles.upsellRow,
+        hovered && { backgroundColor: Colors.surfaceHover },
+        focusRing(focused),
+      ]}
+    >
+      <Lock size={16} color={Colors.textMuted} strokeWidth={1.75} />
+      <Text style={text.muted}>Custom color — included with Pro</Text>
+    </Pressable>
   );
 }
 
@@ -107,6 +147,8 @@ export default function SettingsScreen() {
   const [producerName, setProducerName] = useState("");
   const [phone, setPhone] = useState("");
   const [brandColor, setBrandColor] = useState("#F5B82E");
+  const [hexDraft, setHexDraft] = useState("");
+  const [hexFocused, setHexFocused] = useState(false);
   const [depositPct, setDepositPct] = useState(50);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -114,6 +156,16 @@ export default function SettingsScreen() {
   const [deleting, setDeleting] = useState(false);
   const [connectingStripe, setConnectingStripe] = useState(false);
   const router = useRouter();
+
+  // Custom brand color is a paid perk ("Your branding on proposals" — Pro).
+  const isPaid = (profile?.subscription_tier ?? "free") !== "free";
+  const customSelected = !BRAND_SWATCHES.includes(brandColor);
+
+  function onHexChange(v: string) {
+    setHexDraft(v);
+    const hex = parseHex(v);
+    if (hex) setBrandColor(hex);
+  }
 
   async function pickLogo() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -201,7 +253,9 @@ export default function SettingsScreen() {
       setCompanyName(profile.company_name ?? "");
       setProducerName(profile.producer_name ?? "");
       setPhone(profile.phone ?? "");
-      setBrandColor(profile.brand_color ?? "#F5B82E");
+      const savedColor = profile.brand_color ?? "#F5B82E";
+      setBrandColor(savedColor);
+      setHexDraft(BRAND_SWATCHES.includes(savedColor) ? "" : savedColor);
       setDepositPct(profile.default_deposit_pct ?? 50);
       setLogoUrl(profile.logo_url ?? null);
     }
@@ -287,10 +341,52 @@ export default function SettingsScreen() {
               key={c}
               color={c}
               selected={brandColor === c}
-              onPress={() => setBrandColor(c)}
+              onPress={() => {
+                setBrandColor(c);
+                setHexDraft("");
+              }}
             />
           ))}
         </View>
+        {isPaid ? (
+          <View style={styles.customRow}>
+            <View
+              style={[
+                styles.swatch,
+                { backgroundColor: customSelected ? brandColor : Colors.surface },
+                customSelected && { borderColor: Colors.text },
+              ]}
+            />
+            <TextInput
+              value={hexDraft}
+              onChangeText={onHexChange}
+              onFocus={() => setHexFocused(true)}
+              onBlur={() => {
+                setHexFocused(false);
+                const hex = parseHex(hexDraft);
+                if (hex) setHexDraft(hex);
+              }}
+              placeholder="#1A73E8"
+              placeholderTextColor={Colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={7}
+              accessibilityLabel="Custom brand color hex code"
+              style={[
+                styles.hexInput,
+                hexFocused && { borderColor: Colors.accent },
+                hexDraft.length > 0 &&
+                  !parseHex(hexDraft) &&
+                  !hexFocused && { borderColor: Colors.red },
+                Platform.OS === "web" &&
+                  ({ outlineStyle: "none" } as unknown as TextStyle),
+              ]}
+            />
+            <Text style={text.muted}>Any hex color — matches your brand exactly</Text>
+          </View>
+        ) : (
+          <CustomColorUpsell onPress={() => router.push("/paywall")} />
+        )}
 
         <Text style={text.label}>Default deposit</Text>
         <View style={styles.chipRow}>
@@ -494,6 +590,30 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     borderWidth: 2,
     borderColor: "transparent",
+  },
+  customRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    minHeight: 36,
+  },
+  upsellRow: {
+    alignSelf: "flex-start",
+    paddingHorizontal: Spacing.sm,
+    marginHorizontal: -Spacing.sm,
+    borderRadius: Radius.md,
+  },
+  hexInput: {
+    width: 104,
+    height: 32,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.sm + 2,
+    color: Colors.text,
+    fontFamily: Fonts.regular,
+    fontSize: Type.ui,
   },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
   chip: {
