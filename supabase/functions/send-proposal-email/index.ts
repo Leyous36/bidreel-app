@@ -114,6 +114,25 @@ function buildEmailHtml(p: any, clientName: string, company: string, proposalUrl
   </body></html>`;
 }
 
+// Short, personal follow-up note (vs. the full proposal document) — the
+// message text is written/edited by the sender in the app.
+function buildFollowupHtml(message: string, company: string, proposalUrl?: string): string {
+  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f5f7;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:24px 0;"><tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:Helvetica,Arial,sans-serif;">
+      <tr><td style="border-top:4px solid ${GOLD};padding:28px 32px 6px;">
+        <span style="font-size:18px;font-weight:bold;color:${INK};">${esc(company)}</span>
+      </td></tr>
+      <tr><td style="padding:12px 32px 28px;">
+        ${paras(message)}
+        ${proposalUrl ? `<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:14px 0 4px;"><a href="${esc(proposalUrl)}" style="display:inline-block;background:${GOLD};color:#1A1405;font-weight:bold;font-size:14px;text-decoration:none;padding:11px 24px;border-radius:8px;">View the Proposal</a></td></tr></table>` : ""}
+        <p style="margin:24px 0 0;padding-top:14px;border-top:1px solid ${LINE};color:${MUTED};font-size:12px;">Sent via ${esc(company)} · Reply to this email to get in touch.</p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+  </body></html>`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
@@ -137,7 +156,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { bidId, to, proposal, clientName, companyName, replyTo, subject, proposalUrl } = await req.json();
+    const { bidId, to, proposal, clientName, companyName, replyTo, subject, proposalUrl, followupMessage } = await req.json();
     if (!to || !proposal || !clientName) {
       return new Response(
         JSON.stringify({ error: "Missing client email, proposal, or client name." }),
@@ -209,7 +228,17 @@ Deno.serve(async (req) => {
     }
 
     const company = companyName || "AmeriFilms";
-    const html = buildEmailHtml(proposal, clientName, company, proposalUrl);
+    // A follow-up sends the short note instead of the full proposal document.
+    const followup = typeof followupMessage === "string" ? followupMessage.trim() : "";
+    if (followup.length > 4000) {
+      return new Response(
+        JSON.stringify({ error: "Follow-up message is too long." }),
+        { status: 400, headers: { ...CORS, "Content-Type": "application/json" } },
+      );
+    }
+    const html = followup
+      ? buildFollowupHtml(followup, company, proposalUrl)
+      : buildEmailHtml(proposal, clientName, company, proposalUrl);
 
     const resp = await fetch("https://api.resend.com/emails", {
       method: "POST",

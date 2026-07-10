@@ -67,6 +67,7 @@ export default function BidDetailScreen() {
   const [followupVisible, setFollowupVisible] = useState(false);
   const [followupText, setFollowupText] = useState("");
   const [draftingFollowup, setDraftingFollowup] = useState(false);
+  const [sendingFollowup, setSendingFollowup] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [emailVisible, setEmailVisible] = useState(false);
   const [clientEmail, setClientEmail] = useState("");
@@ -279,6 +280,42 @@ export default function BidDetailScreen() {
     await Clipboard.setStringAsync(followupText);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert("Copied", "Follow-up copied — paste it into your email or text.");
+  }
+
+  async function sendFollowup() {
+    if (!bid?.proposal || !followupText.trim()) return;
+    const email = clientEmail.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      Alert.alert("Check the email", "Enter a valid client email address.");
+      return;
+    }
+    try {
+      setSendingFollowup(true);
+      await sendProposalEmail({
+        bidId: bid.id,
+        to: email,
+        proposal: bid.proposal,
+        clientName: bid.client_name,
+        companyName: profile?.company_name,
+        replyTo: session?.user?.email,
+        subject: `Following up: ${bid.proposal.subject ?? "your video project"}`,
+        proposalUrl: bid.share_token
+          ? `${PUBLIC_BASE}${bid.share_token}`
+          : undefined,
+        followupMessage: followupText.trim(),
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setFollowupVisible(false);
+      track("followup_emailed");
+      Alert.alert("Sent", `Follow-up emailed to ${email}. Replies come back to you.`);
+    } catch (e: unknown) {
+      Alert.alert(
+        "Couldn't send",
+        e instanceof Error ? e.message : "Something went wrong — try again.",
+      );
+    } finally {
+      setSendingFollowup(false);
+    }
   }
 
   async function deleteBid() {
@@ -519,20 +556,48 @@ export default function BidDetailScreen() {
                 <Text style={styles.modalSub}>Writing a follow-up…</Text>
               </View>
             ) : (
-              <ScrollView style={styles.followupScroll}>
-                <Text style={styles.followupText}>{followupText}</Text>
-              </ScrollView>
+              <>
+                <Text style={styles.modalSub}>
+                  Edit the draft, then email it — replies come back to you.
+                </Text>
+                <Field
+                  label="Message"
+                  value={followupText}
+                  onChangeText={setFollowupText}
+                  multiline
+                  editable={!sendingFollowup}
+                  style={styles.followupInput}
+                />
+                <Field
+                  label="Client email"
+                  placeholder="client@email.com"
+                  value={clientEmail}
+                  onChangeText={setClientEmail}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  editable={!sendingFollowup}
+                />
+              </>
             )}
             <View style={styles.modalActions}>
               <Button
                 title="Close"
                 variant="ghost"
                 onPress={() => setFollowupVisible(false)}
+                disabled={sendingFollowup}
               />
               <Button
                 title="Copy"
+                variant="secondary"
                 onPress={copyFollowup}
-                disabled={draftingFollowup || !followupText}
+                disabled={draftingFollowup || sendingFollowup || !followupText}
+              />
+              <Button
+                title="Send"
+                onPress={sendFollowup}
+                loading={sendingFollowup}
+                disabled={draftingFollowup || !followupText.trim()}
               />
             </View>
           </View>
@@ -632,11 +697,9 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
   followupLoading: { alignItems: "center", gap: Spacing.sm, paddingVertical: Spacing.lg },
-  followupScroll: { maxHeight: 300, marginVertical: Spacing.xs },
-  followupText: {
-    fontFamily: Fonts.regular,
-    fontSize: Type.body,
+  followupInput: {
+    minHeight: 160,
+    maxHeight: 260,
     lineHeight: Math.round(Type.body * 1.5),
-    color: Colors.text,
   },
 });

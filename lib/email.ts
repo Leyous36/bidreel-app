@@ -14,6 +14,8 @@ export async function sendProposalEmail(params: {
   replyTo?: string | null;
   subject?: string;
   proposalUrl?: string;
+  /** When set, sends this short note (with a proposal link) instead of the full proposal document. */
+  followupMessage?: string;
 }): Promise<void> {
   const { data, error } = await supabase.functions.invoke("send-proposal-email", {
     body: params,
