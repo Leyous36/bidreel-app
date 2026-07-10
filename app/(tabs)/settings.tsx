@@ -17,7 +17,7 @@ import * as Linking from "expo-linking";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
-import { restorePurchases } from "@/lib/revenue-cat";
+import { getManagementURL, restorePurchases } from "@/lib/revenue-cat";
 import { deleteAccount, connectStripe } from "@/lib/account";
 import { uploadStudioLogo } from "@/lib/branding";
 import {
@@ -285,6 +285,26 @@ export default function SettingsScreen() {
 
   const tier = profile?.subscription_tier ?? "free";
 
+  // Cancel / switch plans where the subscription actually lives: the RC
+  // Web Billing portal for web purchases, the store's subscription page on
+  // phones. Downgrades (Studio -> Pro) follow the change paths configured in
+  // RevenueCat and apply at the next renewal.
+  async function manageSubscription() {
+    const url = await getManagementURL();
+    if (Platform.OS === "web") {
+      if (url && typeof window !== "undefined") {
+        window.open(url, "_blank", "noopener");
+      } else {
+        Alert.alert(
+          "Portal unavailable",
+          "If you subscribed on your phone, manage the plan there instead.",
+        );
+      }
+      return;
+    }
+    Linking.openURL(url ?? "https://apps.apple.com/account/subscriptions");
+  }
+
   return (
     <Screen>
       <PageHeader title="Settings" />
@@ -473,12 +493,25 @@ export default function SettingsScreen() {
                 : "Everything in Pro · Client portal · Up to 5 team members"}
           </Text>
           <View style={styles.btnRow}>
-            {tier === "free" && (
+            {tier === "free" ? (
               <Button
                 title="Upgrade"
                 variant="secondary"
                 onPress={() => router.push("/paywall")}
               />
+            ) : (
+              <>
+                <Button
+                  title="Manage subscription"
+                  variant="secondary"
+                  onPress={manageSubscription}
+                />
+                <Button
+                  title={tier === "studio" ? "Switch plan" : "Upgrade"}
+                  variant="ghost"
+                  onPress={() => router.push("/paywall")}
+                />
+              </>
             )}
             <Button
               title="Restore Purchases"

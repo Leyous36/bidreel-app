@@ -106,3 +106,18 @@ export async function purchaseProduct(
 export async function restorePurchases(): Promise<SubscriptionTier | null> {
   return getEntitlementTier();
 }
+
+/**
+ * RevenueCat Web Billing customer portal (cancel / switch plans — plan
+ * changes follow the subscription change paths configured in the dashboard).
+ * Null when there's no active web subscription.
+ */
+export async function getManagementURL(): Promise<string | null> {
+  const p = instance();
+  if (!p) return null;
+  try {
+    return (await p.getCustomerInfo()).managementURL ?? null;
+  } catch {
+    return null;
+  }
+}

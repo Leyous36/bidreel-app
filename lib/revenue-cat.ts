@@ -94,3 +94,18 @@ export async function restorePurchases(): Promise<SubscriptionTier | null> {
     return null;
   }
 }
+
+/**
+ * Where this subscription is managed (App Store / Play Store / RC portal,
+ * depending on where it was bought). Null when unavailable.
+ */
+export async function getManagementURL(): Promise<string | null> {
+  const P = getPurchases();
+  if (!P) return null;
+  try {
+    const info = await P.getCustomerInfo();
+    return info?.managementURL ?? null;
+  } catch {
+    return null;
+  }
+}

@@ -5,11 +5,22 @@ import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check, X } from "lucide-react-native";
 import { useAuth } from "@/lib/auth-context";
-import { purchaseProduct, restorePurchases } from "@/lib/revenue-cat";
+import {
+  getManagementURL,
+  purchaseProduct,
+  restorePurchases,
+} from "@/lib/revenue-cat";
 import { track } from "@/lib/analytics";
 import { Button, Card, IconButton, Screen, text, useInteractive, focusRing } from "@/components/ui";
 import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
 import { FREE_PROPOSALS_PER_MONTH, type SubscriptionTier } from "@/lib/types";
+
+/** Plan ordering, so we can tell an upgrade from a downgrade. */
+const TIER_RANK: Record<SubscriptionTier, number> = {
+  free: 0,
+  pro: 1,
+  studio: 2,
+};
 
 /** Why the user landed here — so the screen answers their actual question. */
 const REASON_COPY: Record<string, string> = {
@@ -125,6 +136,56 @@ export default function PaywallScreen() {
     }
   }
 
+  // Existing subscribers change plans differently per platform: StoreKit
+  // handles up/downgrades natively inside purchase, but Web Billing does them
+  // through RevenueCat's customer portal (which follows the subscription
+  // change paths and lets Stripe handle proration) — calling purchase() there
+  // would just throw ProductAlreadyPurchased.
+  async function changePlan(productId: string) {
+    if (Platform.OS !== "web") {
+      return handlePurchase(productId);
+    }
+    try {
+      setBusy(productId);
+      const url = await getManagementURL();
+      if (!url) {
+        throw new Error(
+          "Couldn't open the billing portal. If you subscribed on your phone, change plans there instead.",
+        );
+      }
+      window.open(url, "_blank", "noopener");
+      Alert.alert(
+        "Finish in the billing portal",
+        "Pick your new plan in the tab that just opened. Your account updates automatically within a minute of the change.",
+      );
+    } catch (e: unknown) {
+      Alert.alert(
+        "Couldn't change plan",
+        e instanceof Error ? e.message : "Please try again.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  // A downgrade removes features the user is paying for, so confirm before
+  // starting it — on native it fires a real store transaction immediately.
+  function handlePlanChange(productId: string, downgradeTo?: string) {
+    if (!downgradeTo) return changePlan(productId);
+    track("downgrade_started", { product: productId });
+    Alert.alert(
+      `Move to ${downgradeTo}?`,
+      `You'll keep your current features until the end of this billing period, then switch to ${downgradeTo}. Nothing is lost — your proposals stay exactly as they are.`,
+      [
+        { text: "Keep current plan", style: "cancel" },
+        {
+          text: `Move to ${downgradeTo}`,
+          onPress: () => changePlan(productId),
+        },
+      ],
+    );
+  }
+
   async function handleRestore() {
     try {
       setBusy("restore");
@@ -156,18 +217,21 @@ export default function PaywallScreen() {
           <IconButton label="Close" onPress={() => router.back()}>
             <X size={16} color={Colors.textSecondary} strokeWidth={1.75} />
           </IconButton>
-          <Text style={text.heading}>Upgrade</Text>
+          <Text style={text.heading}>{onFreePlan ? "Upgrade" : "Change plan"}</Text>
         </View>
       )}
       <ScrollView contentContainerStyle={styles.container}>
         {contextLine ? <Text style={text.body}>{contextLine}</Text> : null}
-        {onFreePlan ? (
-          <Text style={text.muted}>7-day free trial · cancel anytime</Text>
-        ) : null}
+        <Text style={text.muted}>
+          {onFreePlan
+            ? "7-day free trial · cancel anytime"
+            : "Plan changes happen in the secure billing portal — downgrades apply at your next renewal."}
+        </Text>
 
         {TIERS.map((tier) => {
           const isCurrent = currentTier === tier.tier;
           const shortName = tier.name.replace("BidReel ", "");
+          const isDowngrade = TIER_RANK[tier.tier] < TIER_RANK[currentTier];
           return (
             <Card key={tier.name} style={styles.card}>
               <View style={styles.planHead}>
@@ -199,14 +263,25 @@ export default function PaywallScreen() {
                   title={
                     onFreePlan
                       ? `Start ${shortName} Trial`
-                      : tier.tier === "studio"
-                        ? "Upgrade to Studio"
-                        : "Switch to Pro"
+                      : isDowngrade
+                        ? `Downgrade to ${shortName}`
+                        : `Upgrade to ${shortName}`
                   }
-                  onPress={() => handlePurchase(tier.productId)}
+                  onPress={() =>
+                    onFreePlan
+                      ? handlePurchase(tier.productId)
+                      : handlePlanChange(
+                          tier.productId,
+                          isDowngrade ? shortName : undefined,
+                        )
+                  }
                   loading={busy === tier.productId}
                   disabled={busy !== null}
-                  variant={tier.highlight ? "primary" : "secondary"}
+                  // A downgrade is never the recommended action — keep it
+                  // available but visually secondary to the current plan.
+                  variant={
+                    isDowngrade ? "secondary" : tier.highlight ? "primary" : "secondary"
+                  }
                 />
               )}
             </Card>
