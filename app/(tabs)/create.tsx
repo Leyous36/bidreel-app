@@ -36,7 +36,7 @@ export default function CreateBidScreen() {
 
   function pickTemplate(t: Template) {
     if (isFree && !t.freeTier) {
-      router.push("/paywall");
+      router.push("/paywall?reason=template");
       return;
     }
     Haptics.selectionAsync();
@@ -50,7 +50,7 @@ export default function CreateBidScreen() {
       return;
     }
     if (isFree && used >= FREE_PROPOSALS_PER_MONTH) {
-      router.push("/paywall");
+      router.push("/paywall?reason=limit");
       return;
     }
 

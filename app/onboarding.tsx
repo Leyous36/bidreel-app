@@ -22,15 +22,19 @@ export default function OnboardingScreen() {
   const [busy, setBusy] = useState(false);
   const router = useRouter();
 
+  // The root layout gates on company_name — saving without one would bounce
+  // straight back here, so require it up front.
+  const canSave = companyName.trim().length > 0;
+
   async function handleSave() {
-    if (!session) return;
+    if (!session || !canSave) return;
     setBusy(true);
     const { error } = await supabase
       .from("profiles")
       .update({
-        company_name: companyName || null,
-        producer_name: producerName || null,
-        phone: phone || null,
+        company_name: companyName.trim(),
+        producer_name: producerName.trim() || null,
+        phone: phone.trim() || null,
       })
       .eq("id", session.user.id);
     setBusy(false);
@@ -64,7 +68,7 @@ export default function OnboardingScreen() {
                 placeholder="AmeriFilms"
               />
               <Field
-                label="Your name"
+                label="Your name (optional)"
                 value={producerName}
                 onChangeText={setProducerName}
                 placeholder="Souley Oumarou"
@@ -80,6 +84,7 @@ export default function OnboardingScreen() {
                 title="Start Bidding"
                 onPress={handleSave}
                 loading={busy}
+                disabled={!canSave}
               />
             </View>
           </View>

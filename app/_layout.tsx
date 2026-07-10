@@ -16,7 +16,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { Colors, Fonts, Type } from "@/constants/Colors";
 
 function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { session, profile, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -27,8 +27,21 @@ function RootNavigator() {
       router.replace("/auth");
     } else if (session && inAuthGroup) {
       router.replace("/(tabs)");
+    } else if (
+      // Studio branding goes on every proposal, but the email-confirmation
+      // signup path never passes through onboarding (signUp returns no
+      // session, so auth.tsx can't route there). Gate on profile
+      // completeness instead of the signup path: any signed-in user with no
+      // studio name gets onboarding first. `profile` must be loaded (non-null)
+      // so we don't flash onboarding while the profile is still fetching.
+      session &&
+      profile &&
+      !profile.company_name &&
+      segments[0] !== "onboarding"
+    ) {
+      router.replace("/onboarding");
     }
-  }, [session, loading, segments, router]);
+  }, [session, profile, loading, segments, router]);
 
   // Tapping a proposal-activity push opens that proposal (only while signed in).
   useEffect(() => {

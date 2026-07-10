@@ -27,6 +27,7 @@ import {
   Button,
   Card,
   EmptyState,
+  LoadingState,
   PageHeader,
   Row,
   Screen,
@@ -106,6 +107,7 @@ function SegmentButton({
 export default function DashboardScreen() {
   const { session, profile } = useAuth();
   const [bids, setBids] = useState<Bid[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [range, setRange] = useState<Range>("month");
@@ -123,6 +125,7 @@ export default function DashboardScreen() {
       setBids(data as Bid[]);
       setLoadError(false);
     }
+    setLoading(false);
   }, [session]);
 
   useFocusEffect(
@@ -228,6 +231,10 @@ export default function DashboardScreen() {
     day: "numeric",
   });
 
+  // Brand-new accounts get one clear sentence and one action — not a wall of
+  // zero KPIs pointing at controls that live elsewhere.
+  const firstRun = !loading && bids.length === 0;
+
   return (
     <Screen>
       <PageHeader title="Dashboard" />
@@ -256,18 +263,21 @@ export default function DashboardScreen() {
                 </Text>
                 <Text style={text.muted}>{today}</Text>
               </View>
-              <View style={styles.seg}>
-                {(["month", "all"] as const).map((r) => (
-                  <SegmentButton
-                    key={r}
-                    label={r === "month" ? "This month" : "All time"}
-                    active={range === r}
-                    onPress={() => setRange(r)}
-                  />
-                ))}
-              </View>
+              {!firstRun && (
+                <View style={styles.seg}>
+                  {(["month", "all"] as const).map((r) => (
+                    <SegmentButton
+                      key={r}
+                      label={r === "month" ? "This month" : "All time"}
+                      active={range === r}
+                      onPress={() => setRange(r)}
+                    />
+                  ))}
+                </View>
+              )}
             </View>
 
+            {!firstRun && (
             <View style={styles.metrics}>
               <StatCard
                 label="Total bids"
@@ -311,6 +321,7 @@ export default function DashboardScreen() {
                 footnote={`${openBids.length} open`}
               />
             </View>
+            )}
 
             {stageTotal > 0 && (
               <Card style={styles.panel}>
@@ -366,18 +377,28 @@ export default function DashboardScreen() {
               </View>
             )}
 
-            <View style={styles.recentHead}>
-              <Text style={text.label}>Recent bids</Text>
-              <Button
-                title="View all"
-                variant="ghost"
-                onPress={() => router.push("/bids")}
-              />
-            </View>
+            {!firstRun && (
+              <View style={styles.recentHead}>
+                <Text style={text.label}>Recent bids</Text>
+                <Button
+                  title="View all"
+                  variant="ghost"
+                  onPress={() => router.push("/bids")}
+                />
+              </View>
+            )}
           </FadeInView>
         }
         ListEmptyComponent={
-          <EmptyState message="No bids yet — tap New Bid to generate your first proposal in under 60 seconds." />
+          loading ? (
+            <LoadingState />
+          ) : (
+            <EmptyState
+              message="Generate your first client-ready proposal in under 60 seconds."
+              actionLabel="New bid"
+              onAction={() => router.push("/(tabs)/create")}
+            />
+          )
         }
         renderItem={({ item, index }) => (
           <FadeInView delay={Math.min(index, 6) * 55}>

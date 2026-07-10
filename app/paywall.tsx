@@ -2,14 +2,21 @@ import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, Platform, Pressable } from "react-native";
 import { Alert } from "@/lib/dialog";
 import * as Linking from "expo-linking";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check, X } from "lucide-react-native";
 import { useAuth } from "@/lib/auth-context";
 import { purchaseProduct, restorePurchases } from "@/lib/revenue-cat";
 import { track } from "@/lib/analytics";
 import { Button, Card, IconButton, Screen, text, useInteractive, focusRing } from "@/components/ui";
-import { Colors, Fonts, Spacing, Type } from "@/constants/Colors";
-import type { SubscriptionTier } from "@/lib/types";
+import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
+import { FREE_PROPOSALS_PER_MONTH, type SubscriptionTier } from "@/lib/types";
+
+/** Why the user landed here — so the screen answers their actual question. */
+const REASON_COPY: Record<string, string> = {
+  limit: `You've used all ${FREE_PROPOSALS_PER_MONTH} free proposals this month. Upgrade for unlimited.`,
+  template: "That template is a Pro feature. Upgrade to unlock every template.",
+  branding: "Custom brand colors come with Pro — make proposals unmistakably yours.",
+};
 
 const TIERS: {
   name: string;
@@ -70,11 +77,20 @@ function LegalLink({ label, url }: { label: string; url: string }) {
 export default function PaywallScreen() {
   const { profile, refreshProfile } = useAuth();
   const router = useRouter();
+  const { reason } = useLocalSearchParams<{ reason?: string }>();
   const [busy, setBusy] = useState<string | null>(null);
 
+  const currentTier = profile?.subscription_tier ?? "free";
+  const onFreePlan = currentTier === "free";
+  const contextLine =
+    (reason && REASON_COPY[reason]) ||
+    (onFreePlan
+      ? `You're on the free plan: ${FREE_PROPOSALS_PER_MONTH} proposals a month, 2 templates.`
+      : null);
+
   useEffect(() => {
-    track("paywall_viewed");
-  }, []);
+    track("paywall_viewed", { reason: reason ?? "none" });
+  }, [reason]);
 
   // The DB tier is written ONLY server-side (rc-webhook on RevenueCat events;
   // clients are blocked from that column since migration 0007). Refreshing the
@@ -86,7 +102,14 @@ export default function PaywallScreen() {
       const tier = await purchaseProduct(productId);
       await refreshProfile();
       track("purchase_completed", { product: productId, tier });
-      Alert.alert("You're in", "Your subscription is active. Enjoy BidReel.");
+      Alert.alert(
+        "You're in",
+        // Trials only apply to first-time subscribers; existing subscribers
+        // are charged on plan change, so don't promise a trial they won't get.
+        onFreePlan
+          ? "Your 7-day free trial has started. Enjoy BidReel."
+          : "Your plan has been updated. Enjoy BidReel.",
+      );
       router.back();
     } catch (e: unknown) {
       // RevenueCat sets userCancelled on the error when the buyer backs out.
@@ -137,16 +160,24 @@ export default function PaywallScreen() {
         </View>
       )}
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={text.muted}>7-day free trial · cancel anytime</Text>
+        {contextLine ? <Text style={text.body}>{contextLine}</Text> : null}
+        {onFreePlan ? (
+          <Text style={text.muted}>7-day free trial · cancel anytime</Text>
+        ) : null}
 
         {TIERS.map((tier) => {
-          const isCurrent = profile?.subscription_tier === tier.tier;
+          const isCurrent = currentTier === tier.tier;
+          const shortName = tier.name.replace("BidReel ", "");
           return (
             <Card key={tier.name} style={styles.card}>
               <View style={styles.planHead}>
                 <View style={styles.nameRow}>
                   <Text style={text.title}>{tier.name}</Text>
-                  {tier.highlight && <Text style={text.muted}>Recommended</Text>}
+                  {tier.highlight && (
+                    <View style={styles.recommendedPill}>
+                      <Text style={styles.recommendedText}>Recommended</Text>
+                    </View>
+                  )}
                 </View>
                 <Text style={styles.price}>{tier.price}</Text>
               </View>
@@ -159,10 +190,19 @@ export default function PaywallScreen() {
                 ))}
               </View>
               {isCurrent ? (
-                <Text style={text.muted}>Current plan</Text>
+                <View style={styles.currentPlan}>
+                  <Check size={16} color={Colors.text} strokeWidth={1.75} />
+                  <Text style={text.ui}>Current plan</Text>
+                </View>
               ) : (
                 <Button
-                  title={`Start ${tier.name.replace("BidReel ", "")} Trial`}
+                  title={
+                    onFreePlan
+                      ? `Start ${shortName} Trial`
+                      : tier.tier === "studio"
+                        ? "Upgrade to Studio"
+                        : "Switch to Pro"
+                  }
                   onPress={() => handlePurchase(tier.productId)}
                   loading={busy === tier.productId}
                   disabled={busy !== null}
@@ -218,8 +258,27 @@ const styles = StyleSheet.create({
   planHead: { gap: Spacing.xs },
   nameRow: {
     flexDirection: "row",
-    alignItems: "baseline",
+    alignItems: "center",
     gap: Spacing.sm,
+  },
+  recommendedPill: {
+    backgroundColor: Colors.accentMuted,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.sm - 2,
+    paddingVertical: Spacing.xxs,
+  },
+  recommendedText: {
+    fontFamily: Fonts.medium,
+    fontSize: 12,
+    lineHeight: Math.round(12 * 1.4),
+    letterSpacing: Type.trackUi,
+    color: Colors.text,
+  },
+  currentPlan: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    minHeight: 32,
   },
   price: {
     fontFamily: Fonts.semibold,

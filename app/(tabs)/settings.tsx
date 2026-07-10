@@ -385,7 +385,7 @@ export default function SettingsScreen() {
             <Text style={text.muted}>Any hex color — matches your brand exactly</Text>
           </View>
         ) : (
-          <CustomColorUpsell onPress={() => router.push("/paywall")} />
+          <CustomColorUpsell onPress={() => router.push("/paywall?reason=branding")} />
         )}
 
         <Text style={text.label}>Default deposit</Text>
