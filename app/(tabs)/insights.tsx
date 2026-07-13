@@ -7,6 +7,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { useFocusEffect } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { Bid, proposalValue } from "@/lib/types";
@@ -55,19 +56,24 @@ export default function InsightsScreen() {
     .filter((b) => ACTIVE.includes(b.status))
     .reduce((s, b) => s + amountOf(b), 0);
 
-  const sent = bids.filter((b) => b.status !== "draft");
-  // Keep the status fallback in sync with the dashboard's open-pipeline
-  // buckets — "pending" (awaiting deposit) implies the client opened it.
-  const viewed = bids.filter(
+  // The funnel is strictly nested — each stage is a subset of the one above —
+  // so no step (or rate) can ever exceed 100%. "Sent" is anything that left
+  // draft OR was ever shared/opened (a draft with a view was still sent);
+  // "pending"/"won" statuses imply the client opened it.
+  const sent = bids.filter(
+    (b) => b.status !== "draft" || !!b.share_token || !!b.first_viewed_at,
+  );
+  const viewed = sent.filter(
     (b) =>
       !!b.first_viewed_at ||
       ["viewed", "accepted", "pending", "won"].includes(b.status),
   );
+  const wonInFunnel = viewed.filter((b) => b.status === "won");
   const openRate = sent.length
     ? Math.round((viewed.length / sent.length) * 100)
     : null;
   const acceptRate = viewed.length
-    ? Math.round((won.length / viewed.length) * 100)
+    ? Math.round((wonInFunnel.length / viewed.length) * 100)
     : null;
 
   const depositsCollected =
@@ -89,21 +95,35 @@ export default function InsightsScreen() {
 
   const funnelMax = Math.max(sent.length, 1);
   const funnel = [
-    { label: "Sent", n: sent.length },
-    { label: "Opened", n: viewed.length },
-    { label: "Won", n: won.length },
+    { label: "Sent", n: sent.length, color: Colors.blue },
+    { label: "Opened", n: viewed.length, color: Colors.purple },
+    { label: "Won", n: wonInFunnel.length, color: Colors.green },
   ];
 
   const stats = [
-    { label: "Win rate", value: winRate === null ? "—" : `${winRate}%` },
+    {
+      label: "Win rate",
+      value: winRate === null ? "—" : `${winRate}%`,
+      icon: "trophy" as const,
+      color: Colors.accent,
+    },
     {
       label: "Avg deal size",
       value: avgDeal === null ? "—" : `$${avgDeal.toLocaleString()}`,
+      icon: "cash" as const,
+      color: Colors.green,
     },
-    { label: "Open rate", value: openRate === null ? "—" : `${openRate}%` },
+    {
+      label: "Open rate",
+      value: openRate === null ? "—" : `${openRate}%`,
+      icon: "eye" as const,
+      color: Colors.blue,
+    },
     {
       label: "Deposits collected",
       value: `$${depositsCollected.toLocaleString()}`,
+      icon: "card" as const,
+      color: Colors.purple,
     },
   ];
 
@@ -128,7 +148,14 @@ export default function InsightsScreen() {
         <View style={styles.metrics}>
           {stats.map((s) => (
             <Card key={s.label} style={styles.stat}>
-              <Text style={text.label}>{s.label}</Text>
+              <View style={styles.statHead}>
+                <View
+                  style={[styles.iconWrap, { backgroundColor: s.color + "22" }]}
+                >
+                  <Ionicons name={s.icon} size={14} color={s.color} />
+                </View>
+                <Text style={[text.label, { flexShrink: 1 }]}>{s.label}</Text>
+              </View>
               <Text style={styles.statValue} numberOfLines={1}>
                 {s.value}
               </Text>
@@ -140,7 +167,7 @@ export default function InsightsScreen() {
           <EmptyState message="Generate and send a few proposals — your win data shows up here." />
         ) : (
           <>
-            <Section title="Conversion Funnel">
+            <Section title="Conversion Funnel" icon="filter" color={Colors.blue}>
               <View style={{ gap: 12 }}>
                 {funnel.map((f, i) => {
                   const prev = i > 0 ? funnel[i - 1].n : null;
@@ -152,7 +179,10 @@ export default function InsightsScreen() {
                         <Text style={styles.funnelN}>
                           {f.n}
                           {stepRate !== null ? (
-                            <Text style={text.muted}>  {stepRate}%</Text>
+                            <Text style={[text.muted, { color: f.color }]}>
+                              {"  "}
+                              {stepRate}%
+                            </Text>
                           ) : null}
                         </Text>
                       </View>
@@ -160,7 +190,10 @@ export default function InsightsScreen() {
                         <View
                           style={[
                             styles.fill,
-                            { width: `${Math.max((f.n / funnelMax) * 100, 2)}%` },
+                            {
+                              width: `${Math.max((f.n / funnelMax) * 100, 2)}%`,
+                              backgroundColor: f.color,
+                            },
                           ]}
                         />
                       </View>
@@ -175,7 +208,7 @@ export default function InsightsScreen() {
               </Text>
             </Section>
 
-            <Section title="Win Rate by Template">
+            <Section title="Win Rate by Template" icon="trophy" color={Colors.accent}>
               {byTemplate.length === 0 ? (
                 <Text style={text.muted}>No decided proposals yet.</Text>
               ) : (
@@ -193,7 +226,13 @@ export default function InsightsScreen() {
                         <View
                           style={[
                             styles.fill,
-                            { width: `${Math.max(t.winRate ?? 0, 2)}%` },
+                            {
+                              width: `${Math.max(t.winRate ?? 0, 2)}%`,
+                              backgroundColor:
+                                t.winRate === null
+                                  ? Colors.textMuted
+                                  : Colors.accent,
+                            },
                           ]}
                         />
                       </View>
@@ -203,14 +242,18 @@ export default function InsightsScreen() {
               )}
             </Section>
 
-            <Section title="Pipeline">
+            <Section title="Pipeline" icon="cash" color={Colors.green}>
               <View style={styles.pipeRow}>
                 <Text style={styles.pipeLabel}>Open pipeline value</Text>
-                <Text style={text.title}>${pipeline.toLocaleString()}</Text>
+                <Text style={[text.title, { color: Colors.blue }]}>
+                  ${pipeline.toLocaleString()}
+                </Text>
               </View>
               <View style={styles.pipeRow}>
                 <Text style={styles.pipeLabel}>Revenue won</Text>
-                <Text style={text.title}>${wonValue.toLocaleString()}</Text>
+                <Text style={[text.title, { color: Colors.green }]}>
+                  ${wonValue.toLocaleString()}
+                </Text>
               </View>
             </Section>
           </>
@@ -220,10 +263,25 @@ export default function InsightsScreen() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  icon,
+  color,
+  children,
+}: {
+  title: string;
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  color: string;
+  children: React.ReactNode;
+}) {
   return (
     <Card style={styles.section}>
-      <Text style={text.label}>{title}</Text>
+      <View style={styles.sectionHead}>
+        <View style={[styles.iconWrap, { backgroundColor: color + "22" }]}>
+          <Ionicons name={icon} size={14} color={color} />
+        </View>
+        <Text style={text.label}>{title}</Text>
+      </View>
       {children}
     </Card>
   );
@@ -237,7 +295,16 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   metrics: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
-  stat: { flex: 1, minWidth: "45%", gap: Spacing.xs },
+  stat: { flex: 1, minWidth: "45%", gap: Spacing.sm },
+  statHead: { flexDirection: "row", alignItems: "center", gap: 7 },
+  sectionHead: { flexDirection: "row", alignItems: "center", gap: 7 },
+  iconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 7,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   statValue: {
     color: Colors.text,
     fontWeight: "700",
