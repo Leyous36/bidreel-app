@@ -2,8 +2,8 @@ import { Platform } from "react-native";
 
 /**
  * Web-only global styles that react-native-web can't express per-component:
- * 120ms ease-out transitions on interactive elements, thin scrollbars,
- * selection color, and the Inter fallback stack. No-op on native.
+ * ease-out transitions on interactive elements, thin scrollbars, selection
+ * color, and the system font stack. No-op on native.
  */
 export function injectWebStyles(): void {
   if (Platform.OS !== "web" || typeof document === "undefined") return;
@@ -12,16 +12,16 @@ export function injectWebStyles(): void {
   const style = document.createElement("style");
   style.id = "bidreel-web-styles";
   style.textContent = `
-    html, body { background-color: #0E0E10; }
+    html, body { background-color: #0B0E13; }
     body, input, textarea, button {
-      font-family: Inter_400Regular, Inter, -apple-system, BlinkMacSystemFont,
-        "Segoe UI", Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica,
+        Arial, sans-serif;
     }
     [role="button"], a, input, textarea, select {
-      transition: background-color 120ms ease-out, border-color 120ms ease-out,
-        color 120ms ease-out, opacity 120ms ease-out, outline-color 120ms ease-out;
+      transition: background-color 150ms ease-out, border-color 150ms ease-out,
+        color 150ms ease-out, opacity 150ms ease-out, outline-color 150ms ease-out;
     }
-    ::selection { background: rgba(94, 106, 210, 0.35); }
+    ::selection { background: rgba(245, 184, 46, 0.35); }
     * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
     *::-webkit-scrollbar { width: 8px; height: 8px; }
     *::-webkit-scrollbar-thumb {

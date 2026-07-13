@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { focusRing, useInteractive } from "@/components/ui";
-import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
+import { Colors, Radius, Spacing, Type } from "@/constants/Colors";
 
 interface Props {
   label: string;
@@ -88,7 +88,9 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: "45%",
     backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
     padding: Spacing.md,
   },
   head: {
@@ -99,7 +101,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   label: {
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     letterSpacing: Type.trackUi,
@@ -107,19 +109,18 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   delta: {
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
   },
   value: {
-    fontFamily: Fonts.semibold,
-    fontSize: Type.heading,
-    lineHeight: Math.round(Type.heading * 1.4),
-    letterSpacing: Type.trackHeading,
+    fontWeight: "800",
+    fontSize: 24,
+    lineHeight: 30,
     color: Colors.text,
   },
   foot: {
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     color: Colors.textMuted,

@@ -1,7 +1,7 @@
 import React from "react";
 import { Text, StyleSheet } from "react-native";
 import { Card } from "@/components/ui";
-import { Colors, Fonts, Spacing, Type } from "@/constants/Colors";
+import { Colors, Spacing, Type } from "@/constants/Colors";
 
 interface Props {
   label: string;
@@ -33,14 +33,14 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
   },
   label: {
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     letterSpacing: Type.trackUi,
     color: Colors.textSecondary,
   },
   value: {
-    fontFamily: Fonts.semibold,
+    fontWeight: "700",
     fontSize: Type.heading,
     lineHeight: Math.round(Type.heading * 1.4),
     letterSpacing: Type.trackHeading,

@@ -11,7 +11,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Search } from "lucide-react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { Bid, BidStatus, proposalValue } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -27,7 +27,7 @@ import {
   useInteractive,
   focusRing,
 } from "@/components/ui";
-import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
+import { Colors, Radius, Spacing, Type } from "@/constants/Colors";
 import { getTemplate } from "@/lib/templates";
 
 // Ordered to the real proposal lifecycle. Viewed/Accepted are the states the
@@ -60,12 +60,12 @@ function FilterChip({
       {...handlers}
       style={({ pressed }) => [
         styles.chip,
-        active && { backgroundColor: Colors.accentMuted },
+        active && styles.chipActive,
         (hovered || pressed) && !active && { backgroundColor: Colors.surfaceHover },
         focusRing(focused),
       ]}
     >
-      <Text style={[styles.chipText, active && { color: Colors.text }]}>
+      <Text style={[styles.chipText, active && styles.chipTextActive]}>
         {label}
       </Text>
     </Pressable>
@@ -145,7 +145,7 @@ export default function BidsScreen() {
       <View
         style={[styles.searchWrap, searchFocused && { borderColor: Colors.accent }]}
       >
-        <Search size={16} color={Colors.textMuted} strokeWidth={1.75} />
+        <Ionicons name="search" size={16} color={Colors.textMuted} />
         <TextInput
           style={[
             styles.searchInput,
@@ -222,64 +222,76 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
-    height: 36,
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: Radius.md,
-    marginHorizontal: Spacing.lg,
+    marginHorizontal: Spacing.md,
     marginTop: Spacing.md,
     marginBottom: Spacing.sm,
-    paddingHorizontal: 12,
+    paddingHorizontal: Spacing.md,
   },
   searchInput: {
     flex: 1,
     color: Colors.text,
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.body,
-    paddingVertical: 0,
+    paddingVertical: 10,
   },
   filters: {
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
-    gap: Spacing.xs,
+    gap: Spacing.sm,
   },
   chip: {
-    height: 28,
-    paddingHorizontal: 12,
-    borderRadius: Radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
+  chipActive: {
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
+  },
   chipText: {
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
-    letterSpacing: Type.trackUi,
     color: Colors.textSecondary,
   },
+  chipTextActive: { color: "#1A1405" },
   list: {
-    paddingHorizontal: Spacing.lg,
+    padding: Spacing.md,
     paddingTop: Spacing.sm,
-    paddingBottom: Spacing.lg,
+    gap: Spacing.sm,
   },
-  bidRow: { paddingVertical: Spacing.sm },
-  rowMain: { flex: 1, gap: Spacing.xxs },
-  rowEnd: { alignItems: "flex-end", gap: Spacing.xs },
+  bidRow: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+  },
+  rowMain: { flex: 1, gap: Spacing.xs },
+  rowEnd: { alignItems: "flex-end", gap: 6 },
   client: {
-    fontFamily: Fonts.medium,
-    fontSize: Type.body,
-    lineHeight: Math.round(Type.body * 1.4),
+    fontWeight: "700",
+    fontSize: 16,
+    lineHeight: 22,
     color: Colors.text,
   },
   meta: {
-    fontFamily: Fonts.regular,
-    fontSize: Type.ui,
-    lineHeight: Math.round(Type.ui * 1.4),
+    fontWeight: "400",
+    fontSize: 12,
+    lineHeight: 17,
     color: Colors.textMuted,
   },
   amount: {
-    fontFamily: Fonts.medium,
+    fontWeight: "700",
     fontSize: Type.body,
     lineHeight: Math.round(Type.body * 1.4),
     color: Colors.text,

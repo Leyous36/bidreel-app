@@ -1,52 +1,44 @@
 /**
- * BidReel design tokens — Linear-inspired design language.
+ * BidReel design tokens — dark, cinematic, confident.
  *
- * Dark-first, grayscale surfaces that layer upward in small lightness steps,
- * a single indigo accent used sparingly (primary buttons, active states,
- * focus rings), and white-opacity text tiers. Semantic hues exist only for
- * bid status and success/error signals — never decoration.
+ * Deep blue-black surfaces with visible 1px borders, gold as the "win"
+ * accent, saturated semantic hues, and generous 12–16px radii. Text on a
+ * gold fill is always near-black (#1A1405).
  */
 export const Colors = {
-  // Surface ladder: separate regions with background shifts, not borders.
-  bg: "#0E0E10", // app background
-  surface: "#141416", // one step up: sidebar, cards, inputs
-  surfaceRaised: "#19191C", // two steps up: popovers, modals, active rows
-  surfaceHover: "#1E1E22", // hover target — ~4% lighter than surface
+  bg: "#0B0E13",
+  surface: "#141923",
+  surfaceRaised: "#1C2230",
+  surfaceHover: "#232B3C", // hover target — one step above surfaceRaised
 
-  // Borders are the exception, not the rule: 1px at 8% white.
-  border: "rgba(255,255,255,0.08)",
-  borderStrong: "rgba(255,255,255,0.14)", // focused inputs, pressed outlines
+  border: "#262E3F",
+  borderStrong: "#37425A", // focused inputs, pressed outlines
 
-  // Text tiers — muted text is white at reduced opacity, not gray hexes.
-  text: "#F7F8F8",
-  textSecondary: "rgba(255,255,255,0.60)",
-  textMuted: "rgba(255,255,255,0.50)",
+  text: "#F4F6FA",
+  textSecondary: "#94A0B8",
+  textMuted: "#5B6678",
 
-  // The one accent. Primary buttons, active nav, focus rings — nothing else.
-  accent: "#5E6AD2",
-  accentHover: "#6872D9",
-  accentMuted: "rgba(94,106,210,0.15)", // selected/active row fill
-  accentDark: "#4F5ABF",
+  accent: "#F5B82E", // gold — the "win" color
+  accentHover: "#FFC94D",
+  accentMuted: "rgba(245,184,46,0.16)", // selected/active row fill
+  accentDark: "#C7920F",
 
-  // Semantic signals only (status dots, success/error text). Muted, never
-  // used as fills for decoration.
-  blue: "#7C8AEB",
-  green: "#4CB782",
-  red: "#EB5757",
-  purple: "#9E8CFC",
+  blue: "#4D8DF7",
+  green: "#3DBE7B",
+  red: "#E5564F",
+  purple: "#8E6FF7",
 
   status: {
-    draft: "rgba(255,255,255,0.50)",
-    sent: "#7C8AEB",
-    viewed: "#9E8CFC",
-    accepted: "#67CBC3",
-    pending: "#D2A65E",
-    won: "#4CB782",
-    lost: "#EB5757",
+    draft: "#5B6678",
+    sent: "#4D8DF7",
+    viewed: "#8E6FF7",
+    accepted: "#36C5D6",
+    pending: "#F5B82E",
+    won: "#3DBE7B",
+    lost: "#E5564F",
   } as Record<string, string>,
 };
 
-/** 4px base grid. 8 inside components, 16–24 between groups, 48–64 between sections. */
 export const Spacing = {
   xxs: 2,
   xs: 4,
@@ -59,45 +51,31 @@ export const Spacing = {
 };
 
 export const Radius = {
-  sm: 4,
-  md: 6, // buttons, inputs, rows
-  lg: 8, // cards, popovers, modals — never larger
-  pill: 999, // reserved for status dots
+  sm: 8,
+  md: 12,
+  lg: 16,
+  pill: 999,
 };
 
-/**
- * Inter everywhere. Weight does the hierarchy work, not size:
- * 400 body, 500 labels, 600 headings. Use fontFamily (never fontWeight —
- * static font files on Android ignore it).
- */
-export const Fonts = {
-  regular: "Inter_400Regular",
-  medium: "Inter_500Medium",
-  semibold: "Inter_600SemiBold",
-};
-
-/** Text sizes: 13 UI chrome, 14–15 body. Line-height tight (~1.4). */
+/** System font; weight does the hierarchy work (600 labels, 700–800 headings). */
 export const Type = {
   ui: 13,
-  body: 14,
-  bodyLg: 15,
-  heading: 16,
-  // letterSpacing -0.01em, precomputed in px for common sizes
-  trackHeading: -0.16,
-  trackUi: -0.13,
+  body: 15,
+  bodyLg: 16,
+  heading: 18,
+  trackHeading: 0,
+  trackUi: 0,
 };
 
-/** 100–150ms ease-out only. Nothing bounces, nothing slides in from off-screen. */
 export const Motion = {
-  fast: 120,
+  fast: 150,
 };
 
-/** The one permitted shadow — never heavier. */
 export const Shadow = {
   overlay: {
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.25,
     shadowRadius: 24,
     elevation: 8,
   },

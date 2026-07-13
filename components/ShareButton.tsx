@@ -3,7 +3,7 @@ import { ActivityIndicator, Platform, Share } from "react-native";
 import { Alert } from "@/lib/dialog";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import { Link, Share2 } from "lucide-react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { shareProposal } from "@/lib/ai";
 import { Bid, BidStatus } from "@/lib/types";
 import { IconButton } from "@/components/ui";
@@ -76,9 +76,9 @@ export function ShareButton({
       ) : shared ? (
         // Icon shape (link vs share) carries the "already has a live link"
         // meaning — no color needed; the palette stays grayscale.
-        <Link size={16} color={Colors.textSecondary} strokeWidth={1.75} />
+        <Ionicons name="link" size={18} color={Colors.textSecondary} />
       ) : (
-        <Share2 size={16} color={Colors.textMuted} strokeWidth={1.75} />
+        <Ionicons name="share-outline" size={18} color={Colors.textMuted} />
       )}
     </IconButton>
   );

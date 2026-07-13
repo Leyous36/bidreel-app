@@ -13,7 +13,7 @@ import { Alert } from "@/lib/dialog";
 import { useLocalSearchParams, useFocusEffect, useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import { ArrowLeft } from "lucide-react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { proposalToText, shareProposal, generateFollowup } from "@/lib/ai";
@@ -37,7 +37,6 @@ import {
 } from "@/components/ui";
 import {
   Colors,
-  Fonts,
   Radius,
   Shadow,
   Spacing,
@@ -350,7 +349,7 @@ export default function BidDetailScreen() {
     Platform.OS === "web" ? (
       <View style={styles.topBar}>
         <IconButton label="Back" onPress={() => router.back()}>
-          <ArrowLeft size={16} color={Colors.textSecondary} strokeWidth={1.75} />
+          <Ionicons name="arrow-back" size={16} color={Colors.textSecondary} />
         </IconButton>
         <Text style={text.heading} numberOfLines={1}>
           {bid?.client_name ?? "Proposal"}
@@ -624,7 +623,7 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
   errorBody: {
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     color: Colors.textSecondary,
@@ -655,13 +654,13 @@ const styles = StyleSheet.create({
   linkDot: { width: 8, height: 8, borderRadius: Radius.pill },
   linkText: {
     flex: 1,
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     color: Colors.textSecondary,
   },
   linkCopy: {
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     color: Colors.textSecondary,
@@ -685,7 +684,7 @@ const styles = StyleSheet.create({
     ...Shadow.overlay,
   },
   modalSub: {
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     color: Colors.textSecondary,

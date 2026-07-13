@@ -8,13 +8,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import {
-  ChevronRight,
-  CircleCheck,
-  Clock,
-  Eye,
-  Send,
-} from "lucide-react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { Bid, proposalValue } from "@/lib/types";
@@ -36,7 +30,7 @@ import {
   useInteractive,
 } from "@/components/ui";
 import { ErrorBanner } from "@/components/ErrorBanner";
-import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
+import { Colors, Radius, Spacing, Type } from "@/constants/Colors";
 
 type Range = "month" | "all";
 
@@ -180,7 +174,7 @@ export default function DashboardScreen() {
   const nudges = [
     {
       key: "accepted",
-      icon: CircleCheck,
+      icon: "checkmark-circle" as const,
       items: bids.filter(
         (b) => b.accepted_at && b.deposit_status !== "paid" && b.status !== "lost",
       ),
@@ -188,7 +182,7 @@ export default function DashboardScreen() {
     },
     {
       key: "opened",
-      icon: Eye,
+      icon: "eye" as const,
       items: bids.filter(
         (b) =>
           b.first_viewed_at &&
@@ -200,7 +194,7 @@ export default function DashboardScreen() {
     },
     {
       key: "sent",
-      icon: Send,
+      icon: "send" as const,
       items: bids.filter(
         (b) => b.share_token && !b.first_viewed_at && b.status === "sent",
       ),
@@ -208,7 +202,7 @@ export default function DashboardScreen() {
     },
     {
       key: "stale",
-      icon: Clock,
+      icon: "time" as const,
       items: bids
         .filter(
           (b) =>
@@ -348,31 +342,28 @@ export default function DashboardScreen() {
               <View style={styles.section}>
                 <Text style={text.label}>Needs attention</Text>
                 <View>
-                  {nudges.map((n) => {
-                    const Icon = n.icon;
-                    return (
-                      <Row
-                        key={n.key}
-                        onPress={() => router.push(`/bid/${n.items[0].id}`)}
-                        style={styles.nudgeRow}
-                      >
-                        <Icon
-                          size={16}
-                          color={Colors.textSecondary}
-                          strokeWidth={1.75}
-                        />
-                        <View style={{ flex: 1, gap: Spacing.xxs }}>
-                          <Text style={text.ui}>{n.label(n.items.length)}</Text>
-                          <Text style={text.muted}>{NUDGE_SUB[n.key]}</Text>
-                        </View>
-                        <ChevronRight
-                          size={16}
-                          color={Colors.textMuted}
-                          strokeWidth={1.75}
-                        />
-                      </Row>
-                    );
-                  })}
+                  {nudges.map((n) => (
+                    <Row
+                      key={n.key}
+                      onPress={() => router.push(`/bid/${n.items[0].id}`)}
+                      style={styles.nudgeRow}
+                    >
+                      <Ionicons
+                        name={n.icon}
+                        size={17}
+                        color={Colors.textSecondary}
+                      />
+                      <View style={{ flex: 1, gap: Spacing.xxs }}>
+                        <Text style={text.ui}>{n.label(n.items.length)}</Text>
+                        <Text style={text.muted}>{NUDGE_SUB[n.key]}</Text>
+                      </View>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={16}
+                        color={Colors.textMuted}
+                      />
+                    </Row>
+                  ))}
                 </View>
               </View>
             )}
@@ -460,7 +451,7 @@ const styles = StyleSheet.create({
   },
   segBtnOn: { backgroundColor: Colors.accentMuted },
   segTxt: {
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     letterSpacing: Type.trackUi,
@@ -471,7 +462,7 @@ const styles = StyleSheet.create({
 
   trend: { gap: Spacing.xs },
   trendCaption: {
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: 11,
     lineHeight: Math.round(11 * 1.4),
     color: Colors.textMuted,

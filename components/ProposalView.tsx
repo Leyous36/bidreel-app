@@ -1,7 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { Card, Hairline } from "@/components/ui";
-import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
+import { Colors, Radius, Spacing } from "@/constants/Colors";
 import { PricingTier, Proposal } from "@/lib/types";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -16,22 +15,26 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function TierCard({ tier }: { tier: PricingTier }) {
   const recommended = !!tier.recommended;
   return (
-    <Card style={[styles.tierCard, recommended && styles.tierCardRecommended]}>
+    <View style={[styles.tierCard, recommended && styles.tierCardRecommended]}>
       <View style={styles.tierHeader}>
         <Text style={styles.tierName}>{tier.name}</Text>
-        {recommended && <Text style={styles.recLabel}>Recommended</Text>}
+        {recommended && (
+          <View style={styles.recBadge}>
+            <Text style={styles.recBadgeText}>RECOMMENDED</Text>
+          </View>
+        )}
       </View>
       <Text style={styles.tierTotal}>
         ${Number(tier.total ?? 0).toLocaleString()}
       </Text>
       {!!tier.tagline && <Text style={styles.tierTagline}>{tier.tagline}</Text>}
-      <Hairline style={styles.tierDivider} />
+      <View style={styles.tierDivider} />
       {(tier.includes ?? []).map((inc, i) => (
         <Text key={i} style={styles.tierInclude}>
           •  {inc}
         </Text>
       ))}
-    </Card>
+    </View>
   );
 }
 
@@ -87,7 +90,7 @@ export function ProposalView({ proposal }: { proposal: Proposal }) {
             )}
           </View>
         ) : proposal.investment ? (
-          <Card style={styles.investmentCard}>
+          <View style={styles.investmentCard}>
             {(proposal.investment.breakdown ?? []).map((b, i) => (
               <View key={i} style={styles.investmentRow}>
                 <Text style={styles.investmentItem}>{b.item}</Text>
@@ -105,7 +108,7 @@ export function ProposalView({ proposal }: { proposal: Proposal }) {
             <Text style={styles.paymentTerms}>
               {proposal.investment.paymentTerms}
             </Text>
-          </Card>
+          </View>
         ) : null}
       </Section>
 
@@ -118,136 +121,93 @@ export function ProposalView({ proposal }: { proposal: Proposal }) {
 
 const styles = StyleSheet.create({
   container: { gap: Spacing.lg },
-  subject: {
-    fontFamily: Fonts.semibold,
-    fontSize: Type.heading,
-    lineHeight: Math.round(Type.heading * 1.4),
-    letterSpacing: Type.trackHeading,
-    color: Colors.text,
-  },
+  subject: { color: Colors.text, fontSize: 22, fontWeight: "800", lineHeight: 28 },
   section: { gap: Spacing.sm },
   sectionTitle: {
-    fontFamily: Fonts.semibold,
-    fontSize: Type.heading,
-    lineHeight: Math.round(Type.heading * 1.4),
-    letterSpacing: Type.trackHeading,
-    color: Colors.text,
+    color: Colors.accent,
+    fontSize: 13,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
   },
-  body: {
-    fontFamily: Fonts.regular,
-    fontSize: Type.bodyLg,
-    lineHeight: Math.round(Type.bodyLg * 1.5),
-    color: Colors.textSecondary,
-  },
-  bullet: {
-    fontFamily: Fonts.regular,
-    fontSize: Type.bodyLg,
-    lineHeight: Math.round(Type.bodyLg * 1.5),
-    color: Colors.textSecondary,
-  },
-  timelineRow: { flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.sm },
+  body: { color: Colors.textSecondary, fontSize: 15, lineHeight: 22 },
+  bullet: { color: Colors.textSecondary, fontSize: 15, lineHeight: 24 },
+  timelineRow: { flexDirection: "row", gap: 10, marginBottom: Spacing.sm },
   timelineDot: {
     width: 8,
     height: 8,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.textMuted,
+    borderRadius: 4,
+    backgroundColor: Colors.accent,
     marginTop: 7,
   },
-  timelinePhase: {
-    fontFamily: Fonts.semibold,
-    fontSize: Type.bodyLg,
-    lineHeight: Math.round(Type.bodyLg * 1.5),
-    color: Colors.text,
-  },
-  timelineDuration: { fontFamily: Fonts.regular, color: Colors.textMuted },
+  timelinePhase: { color: Colors.text, fontSize: 15, fontWeight: "700" },
+  timelineDuration: { color: Colors.textMuted, fontWeight: "400" },
 
   // --- Tiered pricing ---
   tierStack: { gap: Spacing.md },
-  tierCard: { gap: Spacing.xs },
-  tierCardRecommended: { backgroundColor: Colors.surfaceRaised },
+  tierCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    gap: 6,
+  },
+  tierCardRecommended: {
+    borderColor: Colors.accent,
+    borderWidth: 2,
+    backgroundColor: Colors.accent + "12",
+  },
   tierHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: Spacing.sm,
   },
   tierName: {
-    fontFamily: Fonts.semibold,
-    fontSize: Type.bodyLg,
-    lineHeight: Math.round(Type.bodyLg * 1.4),
-    letterSpacing: Type.trackUi,
     color: Colors.text,
+    fontSize: 17,
+    fontWeight: "800",
+    letterSpacing: 0.3,
   },
-  recLabel: {
-    fontFamily: Fonts.medium,
-    fontSize: Type.ui,
-    lineHeight: Math.round(Type.ui * 1.4),
-    letterSpacing: Type.trackUi,
-    color: Colors.textSecondary,
+  recBadge: {
+    backgroundColor: Colors.accent,
+    borderRadius: Radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
-  tierTotal: {
-    fontFamily: Fonts.semibold,
-    fontSize: Type.heading,
-    lineHeight: Math.round(Type.heading * 1.4),
-    letterSpacing: Type.trackHeading,
-    color: Colors.text,
-    marginTop: Spacing.xxs,
+  recBadgeText: {
+    color: "#1A1405",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
   },
-  tierTagline: {
-    fontFamily: Fonts.regular,
-    fontSize: Type.ui,
-    lineHeight: Math.round(Type.ui * 1.4),
-    color: Colors.textMuted,
+  tierTotal: { color: Colors.accent, fontSize: 26, fontWeight: "800" },
+  tierTagline: { color: Colors.textMuted, fontSize: 13, fontStyle: "italic" },
+  tierDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: 6,
   },
-  tierDivider: { marginVertical: Spacing.sm },
-  tierInclude: {
-    fontFamily: Fonts.regular,
-    fontSize: Type.body,
-    lineHeight: Math.round(Type.body * 1.5),
-    color: Colors.textSecondary,
-  },
+  tierInclude: { color: Colors.textSecondary, fontSize: 14, lineHeight: 22 },
 
   // --- Legacy single investment (old saved proposals) ---
-  investmentCard: { gap: Spacing.sm },
-  investmentRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: Spacing.sm,
+  investmentCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    gap: 10,
   },
-  investmentItem: {
-    flex: 1,
-    fontFamily: Fonts.regular,
-    fontSize: Type.body,
-    lineHeight: Math.round(Type.body * 1.4),
-    color: Colors.textSecondary,
-  },
-  investmentAmount: {
-    fontFamily: Fonts.medium,
-    fontSize: Type.body,
-    lineHeight: Math.round(Type.body * 1.4),
-    color: Colors.text,
-  },
+  investmentRow: { flexDirection: "row", justifyContent: "space-between" },
+  investmentItem: { color: Colors.textSecondary, fontSize: 14, flex: 1 },
+  investmentAmount: { color: Colors.text, fontSize: 14, fontWeight: "600" },
   totalRow: {
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-    paddingTop: Spacing.sm,
+    paddingTop: 10,
   },
-  totalLabel: {
-    fontFamily: Fonts.semibold,
-    fontSize: Type.bodyLg,
-    lineHeight: Math.round(Type.bodyLg * 1.4),
-    color: Colors.text,
-  },
-  totalAmount: {
-    fontFamily: Fonts.semibold,
-    fontSize: Type.bodyLg,
-    lineHeight: Math.round(Type.bodyLg * 1.4),
-    color: Colors.text,
-  },
-  paymentTerms: {
-    fontFamily: Fonts.regular,
-    fontSize: Type.ui,
-    lineHeight: Math.round(Type.ui * 1.4),
-    color: Colors.textMuted,
-  },
+  totalLabel: { color: Colors.text, fontSize: 16, fontWeight: "800" },
+  totalAmount: { color: Colors.accent, fontSize: 16, fontWeight: "800" },
+  paymentTerms: { color: Colors.textMuted, fontSize: 12, fontStyle: "italic" },
 });

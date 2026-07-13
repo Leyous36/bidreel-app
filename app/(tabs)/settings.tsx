@@ -10,7 +10,7 @@ import {
   TextInput,
   TextStyle,
 } from "react-native";
-import { Lock } from "lucide-react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Alert } from "@/lib/dialog";
 import { useRouter } from "expo-router";
 import * as Linking from "expo-linking";
@@ -32,7 +32,7 @@ import {
   text,
   useInteractive,
 } from "@/components/ui";
-import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
+import { Colors, Radius, Spacing, Type } from "@/constants/Colors";
 
 const BRAND_SWATCHES = [
   "#F5B82E",
@@ -105,7 +105,7 @@ function CustomColorUpsell({ onPress }: { onPress: () => void }) {
         focusRing(focused),
       ]}
     >
-      <Lock size={16} color={Colors.textMuted} strokeWidth={1.75} />
+      <Ionicons name="lock-closed" size={16} color={Colors.textMuted} />
       <Text style={text.muted}>Custom color — included with Pro</Text>
     </Pressable>
   );
@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   sectionTitle: {
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     color: Colors.textSecondary,
@@ -582,13 +582,13 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
   },
   statusLabel: {
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     color: Colors.text,
   },
   detailText: {
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     color: Colors.textSecondary,
@@ -606,7 +606,7 @@ const styles = StyleSheet.create({
   },
   logoImg: { width: 40, height: 40 },
   logoPlaceholder: {
-    fontFamily: Fonts.semibold,
+    fontWeight: "700",
     fontSize: Type.heading,
     lineHeight: Math.round(Type.heading * 1.4),
     color: Colors.textSecondary,
@@ -645,7 +645,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.sm + 2,
     color: Colors.text,
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.ui,
   },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
@@ -665,7 +665,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.accent,
   },
   chipText: {
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     letterSpacing: Type.trackUi,
@@ -680,7 +680,7 @@ const styles = StyleSheet.create({
   groupRow: { justifyContent: "space-between" },
   groupDivider: { marginHorizontal: 12 },
   emailValue: {
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     color: Colors.textSecondary,

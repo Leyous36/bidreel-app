@@ -2,18 +2,12 @@ import React, { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, Platform, View } from "react-native";
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  useFonts,
-} from "@expo-google-fonts/inter";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { initAnalytics } from "@/lib/analytics";
 import { addNotificationTapListener } from "@/lib/notifications";
 import { injectWebStyles } from "@/lib/web-styles";
 import { CommandPalette } from "@/components/CommandPalette";
-import { Colors, Fonts, Type } from "@/constants/Colors";
+import { Colors, Type } from "@/constants/Colors";
 
 function RootNavigator() {
   const { session, profile, loading } = useAuth();
@@ -72,7 +66,7 @@ function RootNavigator() {
           headerShown: Platform.OS !== "web",
           headerStyle: { backgroundColor: Colors.bg },
           headerTintColor: Colors.text,
-          headerTitleStyle: { fontFamily: Fonts.semibold, fontSize: Type.heading },
+          headerTitleStyle: { fontWeight: "700", fontSize: Type.heading },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: Colors.bg },
         }}
@@ -92,20 +86,10 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-  });
-
   useEffect(() => {
     initAnalytics();
     injectWebStyles();
   }, []);
-
-  if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: Colors.bg }} />;
-  }
 
   return (
     <AuthProvider>

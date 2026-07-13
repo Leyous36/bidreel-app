@@ -4,28 +4,23 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Payouts connected · BidReel</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
-  :root{--bg:#0E0E10;--surface:#141416;--text:#F7F8F8;--t2:rgba(255,255,255,0.6);
-    --tmute:rgba(255,255,255,0.5);--accent:#5E6AD2;--green:#4CB782;--border:rgba(255,255,255,0.08)}
+  :root{--bg:#0B0E13;--text:#F4F6FA;--t2:#94A0B8;--accent:#F5B82E;--green:#3DBE7B;--border:#262E3F}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
-    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    font-size:14px;line-height:1.4;-webkit-font-smoothing:antialiased}
-  .box{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;gap:12px}
-  .check{color:var(--green);margin-bottom:4px}
-  h1{font-size:16px;font-weight:600;letter-spacing:-0.16px;margin:0}
-  p{color:var(--t2);font-size:14px;line-height:1.5;max-width:380px;margin:0}
-  .brand{position:absolute;top:24px;font-size:13px;font-weight:600;letter-spacing:-0.13px}
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .box{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;gap:14px}
+  .ring{width:74px;height:74px;border-radius:50%;background:rgba(61,190,123,.13);border:2px solid var(--green);
+    display:flex;align-items:center;justify-content:center;color:var(--green);font-size:38px}
+  h1{font-size:22px;margin:6px 0 0}
+  p{color:var(--t2);font-size:15px;line-height:1.5;max-width:380px;margin:0}
+  .brand{position:absolute;top:22px;font-weight:800;letter-spacing:.3px}
+  .brand span{color:var(--accent)}
 </style>
 </head>
 <body>
-  <div class="brand">BidReel</div>
+  <div class="brand">Bid<span>Reel</span></div>
   <div class="box">
-    <svg class="check" width="20" height="20" viewBox="0 0 24 24" fill="none"
-         stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
-         aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+    <div class="ring">✓</div>
     <h1>Payouts connected</h1>
     <p>Your Stripe account is set up. You can close this window and return to the
        BidReel app — deposits on accepted proposals will land in your account.</p>

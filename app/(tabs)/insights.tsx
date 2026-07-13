@@ -13,7 +13,7 @@ import { Bid, proposalValue } from "@/lib/types";
 import { TEMPLATES } from "@/lib/templates";
 import { Card, EmptyState, PageHeader, Screen, text } from "@/components/ui";
 import { ErrorBanner } from "@/components/ErrorBanner";
-import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
+import { Colors, Radius, Spacing, Type } from "@/constants/Colors";
 
 const ACTIVE = ["sent", "viewed", "pending", "accepted"];
 
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   stat: { flex: 1, minWidth: "45%", gap: Spacing.xs },
   statValue: {
     color: Colors.text,
-    fontFamily: Fonts.semibold,
+    fontWeight: "700",
     fontSize: Type.heading,
     lineHeight: Math.round(Type.heading * 1.4),
     letterSpacing: Type.trackHeading,
@@ -253,21 +253,21 @@ const styles = StyleSheet.create({
   },
   funnelLabel: {
     color: Colors.text,
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: Type.body,
     lineHeight: Math.round(Type.body * 1.4),
     letterSpacing: Type.trackUi,
   },
   funnelN: {
     color: Colors.text,
-    fontFamily: Fonts.semibold,
+    fontWeight: "700",
     fontSize: Type.body,
     lineHeight: Math.round(Type.body * 1.4),
     letterSpacing: Type.trackUi,
   },
   tplName: {
     color: Colors.text,
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: Type.body,
     lineHeight: Math.round(Type.body * 1.4),
     letterSpacing: Type.trackUi,
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   },
   pipeLabel: {
     color: Colors.textSecondary,
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.body,
     lineHeight: Math.round(Type.body * 1.4),
   },

@@ -6,24 +6,16 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { usePathname, useRouter } from "expo-router";
-import {
-  BarChart3,
-  FileText,
-  LayoutGrid,
-  PanelLeft,
-  Plus,
-  Search,
-  Settings,
-} from "lucide-react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { focusRing, useInteractive } from "@/components/ui";
 import { openCommandPalette } from "@/lib/web-styles";
-import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
+import { Colors, Radius, Spacing, Type } from "@/constants/Colors";
 
 const NAV = [
-  { path: "/", label: "Dashboard", Icon: LayoutGrid },
-  { path: "/bids", label: "Proposals", Icon: FileText },
-  { path: "/insights", label: "Insights", Icon: BarChart3 },
-  { path: "/settings", label: "Settings", Icon: Settings },
+  { path: "/", label: "Dashboard", icon: "grid" },
+  { path: "/bids", label: "Proposals", icon: "documents" },
+  { path: "/insights", label: "Insights", icon: "stats-chart" },
+  { path: "/settings", label: "Settings", icon: "settings" },
 ] as const;
 
 const COLLAPSE_KEY = "bidreel.sidebar.collapsed";
@@ -57,7 +49,7 @@ export function Sidebar() {
           collapsed
           onPress={toggle}
         >
-          <PanelLeft size={16} color={Colors.textSecondary} strokeWidth={1.75} />
+          <Ionicons name="menu" size={16} color={Colors.textSecondary} />
         </SidebarRow>
       </View>
 
@@ -69,11 +61,11 @@ export function Sidebar() {
         collapsed={collapsed}
         onPress={openCommandPalette}
       >
-        <Search size={16} color={Colors.textSecondary} strokeWidth={1.75} />
+        <Ionicons name="search" size={16} color={Colors.textSecondary} />
       </SidebarRow>
 
       <View style={styles.nav}>
-        {NAV.map(({ path, label, Icon }) => {
+        {NAV.map(({ path, label, icon }) => {
           const active = pathname === path;
           return (
             <SidebarRow
@@ -83,10 +75,10 @@ export function Sidebar() {
               active={active}
               onPress={() => router.push(path as never)}
             >
-              <Icon
+              <Ionicons
+                name={icon}
                 size={16}
-                color={active ? Colors.text : Colors.textSecondary}
-                strokeWidth={1.75}
+                color={active ? Colors.accent : Colors.textSecondary}
               />
             </SidebarRow>
           );
@@ -158,7 +150,7 @@ function NewBidButton({
         focusRing(focused),
       ]}
     >
-      <Plus size={16} color="#FFFFFF" strokeWidth={1.75} />
+      <Ionicons name="add" size={16} color="#1A1405" />
       {!collapsed && <Text style={styles.newBidLabel}>New proposal</Text>}
     </Pressable>
   );
@@ -181,7 +173,7 @@ const styles = StyleSheet.create({
     paddingLeft: Spacing.xs,
   },
   wordmark: {
-    fontFamily: Fonts.semibold,
+    fontWeight: "700",
     fontSize: Type.ui,
     letterSpacing: Type.trackUi,
     color: Colors.text,
@@ -199,13 +191,13 @@ const styles = StyleSheet.create({
   navRowCollapsed: { justifyContent: "center", paddingHorizontal: 0 },
   navLabel: {
     flex: 1,
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: Type.ui,
     letterSpacing: Type.trackUi,
     color: Colors.textSecondary,
   },
   navHint: {
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: 12,
     color: Colors.textMuted,
   },
@@ -219,9 +211,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   newBidLabel: {
-    fontFamily: Fonts.medium,
+    fontWeight: "700",
     fontSize: Type.ui,
     letterSpacing: Type.trackUi,
-    color: "#FFFFFF",
+    color: "#1A1405",
   },
 });

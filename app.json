@@ -19,7 +19,7 @@
       "package": "com.amerifilms.bidreel",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#0E0E10"
+        "backgroundColor": "#061623"
       },
       "edgeToEdgeEnabled": true,
       "blockedPermissions": [
@@ -41,7 +41,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/notification-icon.png",
-          "color": "#5E6AD2"
+          "color": "#F5B82E"
         }
       ],
       [
@@ -50,7 +50,7 @@
           "image": "./assets/images/icon.png",
           "imageWidth": 220,
           "resizeMode": "contain",
-          "backgroundColor": "#0E0E10"
+          "backgroundColor": "#061623"
         }
       ],
       [

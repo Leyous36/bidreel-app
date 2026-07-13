@@ -15,19 +15,11 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
-import {
-  ArrowUpRight,
-  BarChart3,
-  FileText,
-  LayoutGrid,
-  Plus,
-  Settings,
-} from "lucide-react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { STATUS_LABELS, BidStatus } from "@/lib/types";
 import {
   Colors,
-  Fonts,
   Radius,
   Shadow,
   Spacing,
@@ -42,7 +34,7 @@ interface Command {
   run: () => void;
 }
 
-const ICON = { size: 16, strokeWidth: 1.75, color: Colors.textSecondary };
+const ICON = { size: 16, color: Colors.textSecondary };
 
 export function CommandPalette() {
   const router = useRouter();
@@ -108,31 +100,31 @@ export function CommandPalette() {
         id: "new-bid",
         label: "New proposal",
         hint: "Create",
-        icon: <Plus {...ICON} />,
+        icon: <Ionicons name="add-circle" {...ICON} />,
         run: () => go("/(tabs)/create"),
       },
       {
         id: "dashboard",
         label: "Go to Dashboard",
-        icon: <LayoutGrid {...ICON} />,
+        icon: <Ionicons name="grid" {...ICON} />,
         run: () => go("/(tabs)"),
       },
       {
         id: "bids",
         label: "Go to Proposals",
-        icon: <FileText {...ICON} />,
+        icon: <Ionicons name="documents" {...ICON} />,
         run: () => go("/(tabs)/bids"),
       },
       {
         id: "insights",
         label: "Go to Insights",
-        icon: <BarChart3 {...ICON} />,
+        icon: <Ionicons name="stats-chart" {...ICON} />,
         run: () => go("/(tabs)/insights"),
       },
       {
         id: "settings",
         label: "Go to Settings",
-        icon: <Settings {...ICON} />,
+        icon: <Ionicons name="settings" {...ICON} />,
         run: () => go("/(tabs)/settings"),
       },
     ];
@@ -140,7 +132,7 @@ export function CommandPalette() {
       id: `bid-${b.id}`,
       label: b.client_name,
       hint: STATUS_LABELS[b.status],
-      icon: <ArrowUpRight {...ICON} />,
+      icon: <Ionicons name="open-outline" {...ICON} />,
       run: () => go(`/bid/${b.id}`),
     }));
     const q = query.trim().toLowerCase();
@@ -250,7 +242,7 @@ const styles = StyleSheet.create({
     height: 44,
     paddingHorizontal: Spacing.md,
     color: Colors.text,
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.bodyLg,
   },
   hairline: { height: 1, backgroundColor: Colors.border },
@@ -266,17 +258,17 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     flex: 1,
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.body,
     color: Colors.text,
   },
   rowHint: {
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.ui,
     color: Colors.textMuted,
   },
   emptyText: {
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.body,
     color: Colors.textSecondary,
     textAlign: "center",

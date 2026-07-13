@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Platform, Pressable } from "react-n
 import { Alert } from "@/lib/dialog";
 import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, X } from "lucide-react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth-context";
 import {
   getManagementURL,
@@ -12,7 +12,7 @@ import {
 } from "@/lib/revenue-cat";
 import { track } from "@/lib/analytics";
 import { Button, Card, IconButton, Screen, text, useInteractive, focusRing } from "@/components/ui";
-import { Colors, Fonts, Radius, Spacing, Type } from "@/constants/Colors";
+import { Colors, Radius, Spacing, Type } from "@/constants/Colors";
 import { FREE_PROPOSALS_PER_MONTH, type SubscriptionTier } from "@/lib/types";
 
 /** Plan ordering, so we can tell an upgrade from a downgrade. */
@@ -215,7 +215,7 @@ export default function PaywallScreen() {
       {Platform.OS === "web" && (
         <View style={styles.topRow}>
           <IconButton label="Close" onPress={() => router.back()}>
-            <X size={16} color={Colors.textSecondary} strokeWidth={1.75} />
+            <Ionicons name="close" size={18} color={Colors.textSecondary} />
           </IconButton>
           <Text style={text.heading}>{onFreePlan ? "Upgrade" : "Change plan"}</Text>
         </View>
@@ -248,14 +248,14 @@ export default function PaywallScreen() {
               <View style={styles.featureList}>
                 {tier.features.map((f) => (
                   <View key={f} style={styles.featureRow}>
-                    <Check size={16} color={Colors.textSecondary} strokeWidth={1.75} />
+                    <Ionicons name="checkmark" size={16} color={Colors.textSecondary} />
                     <Text style={styles.featureText}>{f}</Text>
                   </View>
                 ))}
               </View>
               {isCurrent ? (
                 <View style={styles.currentPlan}>
-                  <Check size={16} color={Colors.text} strokeWidth={1.75} />
+                  <Ionicons name="checkmark" size={16} color={Colors.text} />
                   <Text style={text.ui}>Current plan</Text>
                 </View>
               ) : (
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xxs,
   },
   recommendedText: {
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: 12,
     lineHeight: Math.round(12 * 1.4),
     letterSpacing: Type.trackUi,
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
     minHeight: 32,
   },
   price: {
-    fontFamily: Fonts.semibold,
+    fontWeight: "700",
     fontSize: Type.heading,
     lineHeight: Math.round(Type.heading * 1.4),
     letterSpacing: Type.trackHeading,
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   featureText: {
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.body,
     lineHeight: Math.round(Type.body * 1.4),
     color: Colors.textSecondary,
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   legalLink: {
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     color: Colors.textSecondary,
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
   },
   legalDot: {
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.ui,
     color: Colors.textMuted,
   },

@@ -1,10 +1,10 @@
 /**
- * Shared UI primitives — the Linear-language kit.
+ * Shared UI primitives — dark, cinematic, confident.
  *
  * Rules encoded here so screens don't re-derive them:
- * - Buttons: 32px tall, 6px radius, 13px/500 labels. Secondary gets a subtle
- *   1px border; primary is the only accent-filled element on a screen.
- * - Rows: 40px tall, hover lightens the background ~4%, no borders.
+ * - Buttons: chunky (14px vertical padding), 12px radius, 16px/700 labels.
+ *   Primary is a gold fill with near-black text (#1A1405).
+ * - Cards and inputs: surface fills with visible 1px borders.
  * - Every interactive element: hover state + visible keyboard focus ring.
  * - Empty states: one sentence, one action.
  * - Progressive disclosure: secondary actions live behind an OverflowMenu.
@@ -26,10 +26,9 @@ import {
   View,
   ViewStyle,
 } from "react-native";
-import { MoreHorizontal } from "lucide-react-native";
+import { Ionicons } from "@expo/vector-icons";
 import {
   Colors,
-  Fonts,
   Radius,
   Shadow,
   Spacing,
@@ -79,45 +78,45 @@ export function focusRing(focused: boolean): ViewStyle {
 
 export const text = StyleSheet.create({
   heading: {
-    fontFamily: Fonts.semibold,
+    fontWeight: "700",
     fontSize: Type.heading,
     lineHeight: Math.round(Type.heading * 1.4),
     letterSpacing: Type.trackHeading,
     color: Colors.text,
   },
   title: {
-    fontFamily: Fonts.semibold,
+    fontWeight: "700",
     fontSize: Type.bodyLg,
     lineHeight: Math.round(Type.bodyLg * 1.4),
     letterSpacing: Type.trackUi,
     color: Colors.text,
   },
   label: {
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     color: Colors.textSecondary,
   },
   body: {
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.body,
     lineHeight: Math.round(Type.body * 1.4),
     color: Colors.text,
   },
   bodyLg: {
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.bodyLg,
     lineHeight: Math.round(Type.bodyLg * 1.4),
     color: Colors.text,
   },
   muted: {
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     color: Colors.textMuted,
   },
   ui: {
-    fontFamily: Fonts.medium,
+    fontWeight: "600",
     fontSize: Type.ui,
     lineHeight: Math.round(Type.ui * 1.4),
     color: Colors.text,
@@ -198,21 +197,23 @@ export function Button({
   const base: ViewStyle =
     variant === "primary"
       ? { backgroundColor: hovered ? Colors.accentHover : Colors.accent }
-      : variant === "ghost"
-        ? { backgroundColor: hovered ? Colors.surfaceHover : "transparent" }
-        : {
-            backgroundColor: hovered ? Colors.surfaceHover : Colors.surface,
-            borderWidth: 1,
-            borderColor: Colors.border,
-          };
+      : variant === "danger"
+        ? { backgroundColor: Colors.red }
+        : variant === "ghost"
+          ? { backgroundColor: hovered ? Colors.surfaceHover : "transparent" }
+          : {
+              backgroundColor: hovered ? Colors.surfaceHover : Colors.surfaceRaised,
+              borderWidth: 1,
+              borderColor: Colors.border,
+            };
   const labelColor =
     variant === "primary"
-      ? "#FFFFFF"
-      : variant === "danger"
-        ? Colors.red
-        : hovered
+      ? "#1A1405"
+      : variant === "ghost"
+        ? hovered
           ? Colors.text
-          : Colors.textSecondary;
+          : Colors.textSecondary
+        : Colors.text;
 
   return (
     <Pressable
@@ -222,10 +223,11 @@ export function Button({
       {...handlers}
       style={({ pressed }) => [
         styles.button,
+        variant === "ghost" && styles.buttonGhost,
         base,
         focusRing(focused),
         (disabled || loading) && { opacity: 0.5 },
-        pressed && { opacity: 0.8 },
+        pressed && { opacity: 0.85 },
       ]}
     >
       {loading ? (
@@ -233,7 +235,15 @@ export function Button({
       ) : (
         <>
           {icon}
-          <Text style={[styles.buttonText, { color: labelColor }]}>{title}</Text>
+          <Text
+            style={[
+              styles.buttonText,
+              variant === "ghost" && styles.buttonTextGhost,
+              { color: labelColor },
+            ]}
+          >
+            {title}
+          </Text>
         </>
       )}
     </Pressable>
@@ -318,7 +328,7 @@ interface RowProps {
 }
 
 /**
- * 40px interactive list row. Hover lightens the background; no borders.
+ * Interactive list row. Hover lightens the background.
  *
  * A row navigates but often *contains* its own action buttons (share, copy),
  * so it must NOT render as a `<button>` — nested `<button>`s are invalid HTML
@@ -418,7 +428,7 @@ export function OverflowMenu({ items }: { items: MenuItem[] }) {
   return (
     <>
       <IconButton ref={anchor} label="More actions" onPress={openMenu}>
-        <MoreHorizontal size={16} color={Colors.textSecondary} strokeWidth={1.75} />
+        <Ionicons name="ellipsis-horizontal" size={16} color={Colors.textSecondary} />
       </IconButton>
       <Modal transparent visible={open} animationType="none" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.menuBackdrop} onPress={() => setOpen(false)}>
@@ -480,6 +490,8 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
     borderRadius: Radius.lg,
     padding: Spacing.md,
   },
@@ -488,22 +500,29 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: Spacing.sm - 2,
-    height: 32,
-    paddingHorizontal: 12,
+    gap: Spacing.sm,
+    paddingVertical: 14,
+    paddingHorizontal: Spacing.md,
     borderRadius: Radius.md,
+  },
+  buttonGhost: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
   },
   buttonText: {
-    fontFamily: Fonts.medium,
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  buttonTextGhost: {
+    fontWeight: "600",
     fontSize: Type.ui,
-    letterSpacing: Type.trackUi,
   },
   iconButton: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: Radius.md,
+    borderRadius: Radius.sm,
   },
   fieldWrap: { gap: 6 },
   input: {
@@ -511,20 +530,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: Radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minHeight: 36,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    minHeight: 44,
     color: Colors.text,
-    fontFamily: Fonts.regular,
+    fontWeight: "400",
     fontSize: Type.body,
   },
-  inputMultiline: { minHeight: 96, textAlignVertical: "top" },
+  inputMultiline: { minHeight: 100, textAlignVertical: "top" },
   inputFocused: { borderColor: Colors.accent },
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
-    minHeight: 40,
+    minHeight: 44,
     paddingHorizontal: 12,
     borderRadius: Radius.md,
   },

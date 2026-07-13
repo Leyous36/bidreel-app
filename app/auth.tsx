@@ -5,11 +5,12 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from "react-native";
 import { Alert } from "@/lib/dialog";
 import { useRouter } from "expo-router";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { Button, Field, Screen, text } from "@/components/ui";
+import { Button, Field, Screen } from "@/components/ui";
 import { Colors, Spacing } from "@/constants/Colors";
 
 export default function AuthScreen() {
@@ -92,56 +93,48 @@ export default function AuthScreen() {
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.panel}>
-          <View style={styles.header}>
-            <Text style={text.heading}>BidReel</Text>
-            <Text style={[text.body, styles.tagline]}>
-              Win more video production work.
+        <Text style={styles.logo}>
+          Bid<Text style={{ color: Colors.accent }}>Reel</Text>
+        </Text>
+        <Text style={styles.tagline}>
+          Win more video production work.
+        </Text>
+
+        <View style={styles.form}>
+          <Field
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            placeholder="you@studio.com"
+          />
+          <Field
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            placeholder="••••••••"
+          />
+          <Button
+            title={mode === "signin" ? "Sign In" : "Create Account"}
+            onPress={handleSubmit}
+            loading={busy}
+          />
+          <Pressable
+            onPress={() => setMode(mode === "signin" ? "signup" : "signin")}
+          >
+            <Text style={styles.switchText}>
+              {mode === "signin"
+                ? "New here? Create an account"
+                : "Already have an account? Sign in"}
             </Text>
-          </View>
-
-          <View style={styles.form}>
-            <Field
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              placeholder="you@studio.com"
-            />
-            <Field
-              label="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder="••••••••"
-            />
-            <Button
-              title={mode === "signin" ? "Sign In" : "Create Account"}
-              onPress={handleSubmit}
-              loading={busy}
-            />
-          </View>
-
-          <View style={styles.secondary}>
-            <Button
-              title={
-                mode === "signin"
-                  ? "New here? Create an account"
-                  : "Already have an account? Sign in"
-              }
-              onPress={() => setMode(mode === "signin" ? "signup" : "signin")}
-              variant="ghost"
-            />
-            {mode === "signin" ? (
-              <Button
-                title="Forgot password?"
-                onPress={handleForgotPassword}
-                disabled={busy}
-                variant="ghost"
-              />
-            ) : null}
-          </View>
+          </Pressable>
+          {mode === "signin" ? (
+            <Pressable onPress={handleForgotPassword} disabled={busy}>
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </Pressable>
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </Screen>
@@ -152,19 +145,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
     padding: Spacing.lg,
+    gap: Spacing.sm,
   },
-  panel: {
-    width: "100%",
-    maxWidth: 360,
-    gap: Spacing.lg,
+  logo: {
+    color: Colors.text,
+    fontSize: 40,
+    fontWeight: "900",
+    textAlign: "center",
   },
-  header: { gap: Spacing.xs },
-  tagline: { color: Colors.textSecondary },
+  tagline: {
+    color: Colors.textSecondary,
+    fontSize: 15,
+    textAlign: "center",
+    marginBottom: Spacing.xl,
+  },
   form: { gap: Spacing.md },
-  secondary: {
-    alignItems: "flex-start",
-    gap: Spacing.xs,
+  switchText: {
+    color: Colors.blue,
+    textAlign: "center",
+    fontSize: 14,
+    paddingVertical: Spacing.sm,
+  },
+  forgotText: {
+    color: Colors.textSecondary,
+    textAlign: "center",
+    fontSize: 13,
+    textDecorationLine: "underline",
+    paddingVertical: 4,
   },
 });

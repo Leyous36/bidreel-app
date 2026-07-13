@@ -1,17 +1,15 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Easing, ViewStyle } from "react-native";
-import { Motion } from "@/constants/Colors";
+import { Animated, ViewStyle } from "react-native";
 
 /**
- * Fades its children in on mount — 120ms ease-out, no translation.
- * (Motion rules: 100–150ms ease-out only; nothing slides in.)
- * `delay` and `distance` are kept for call-site compatibility; distance is
- * intentionally ignored.
+ * Fades + slides its children up on mount. Give staggered `delay` values to
+ * neighbouring elements for a cascading entrance. Works on native and web
+ * (touch-friendly motion — no hover required).
  */
 export function FadeInView({
   children,
   delay = 0,
-  distance: _distance,
+  distance = 12,
   style,
 }: {
   children: React.ReactNode;
@@ -20,16 +18,28 @@ export function FadeInView({
   style?: ViewStyle;
 }) {
   const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(distance)).current;
 
   useEffect(() => {
-    Animated.timing(opacity, {
-      toValue: 1,
-      duration: Motion.fast,
-      delay,
-      easing: Easing.out(Easing.quad),
-      useNativeDriver: true,
-    }).start();
-  }, [delay, opacity]);
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 340,
+        delay,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 340,
+        delay,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [delay, opacity, translateY]);
 
-  return <Animated.View style={[style, { opacity }]}>{children}</Animated.View>;
+  return (
+    <Animated.View style={[style, { opacity, transform: [{ translateY }] }]}>
+      {children}
+    </Animated.View>
+  );
 }

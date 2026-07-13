@@ -1,17 +1,9 @@
 import React from "react";
 import { Platform, useWindowDimensions, View } from "react-native";
 import { Tabs } from "expo-router";
-import {
-  BarChart3,
-  FileText,
-  LayoutGrid,
-  Plus,
-  Settings,
-} from "lucide-react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Sidebar } from "@/components/Sidebar";
-import { Colors, Fonts, Type } from "@/constants/Colors";
-
-const ICON_PROPS = { size: 16, strokeWidth: 1.75 };
+import { Colors, Type } from "@/constants/Colors";
 
 export default function TabLayout() {
   const { width } = useWindowDimensions();
@@ -25,7 +17,7 @@ export default function TabLayout() {
         headerShown: Platform.OS !== "web",
         headerStyle: { backgroundColor: Colors.bg },
         headerTintColor: Colors.text,
-        headerTitleStyle: { fontFamily: Fonts.semibold, fontSize: Type.heading },
+        headerTitleStyle: { fontWeight: "700", fontSize: Type.heading },
         headerShadowVisible: false,
         tabBarStyle: sidebarLayout
           ? { display: "none" }
@@ -36,7 +28,7 @@ export default function TabLayout() {
             },
         tabBarActiveTintColor: Colors.accent,
         tabBarInactiveTintColor: Colors.textMuted,
-        tabBarLabelStyle: { fontFamily: Fonts.medium, fontSize: 11 },
+        tabBarLabelStyle: { fontWeight: "600", fontSize: 11 },
         sceneStyle: { backgroundColor: Colors.bg },
       }}
     >
@@ -44,35 +36,45 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Dashboard",
-          tabBarIcon: ({ color }) => <LayoutGrid {...ICON_PROPS} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="grid" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="create"
         options={{
           title: "New Proposal",
-          tabBarIcon: ({ color }) => <Plus {...ICON_PROPS} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="add-circle" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="bids"
         options={{
           title: "Proposals",
-          tabBarIcon: ({ color }) => <FileText {...ICON_PROPS} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="documents" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="insights"
         options={{
           title: "Insights",
-          tabBarIcon: ({ color }) => <BarChart3 {...ICON_PROPS} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="stats-chart" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color }) => <Settings {...ICON_PROPS} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings" size={size} color={color} />
+          ),
         }}
       />
     </Tabs>
